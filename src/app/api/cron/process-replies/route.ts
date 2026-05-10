@@ -69,18 +69,33 @@ export async function POST(request: NextRequest) {
       });
 
       if (!categorization) {
-        console.warn(`[Cron] Could not categorize reply for email ${email.id}`);
+        // Mark as processed with fallback to prevent re-picking
+        await supabase
+          .from("emails")
+          .update({ reply_category: "unknown", reply_sentiment: "neutral" })
+          .eq("id", email.id);
+        console.warn(`[Cron] Could not categorize reply for email ${email.id}, marked as unknown`);
         continue;
       }
 
       // Update email with categorization
-      await supabase
+      const { error: updateErr } = await supabase
         .from("emails")
         .update({
           reply_category: categorization.category,
           reply_sentiment: categorization.confidence > 0.7 ? "positive" : "neutral",
         })
         .eq("id", email.id);
+
+      if (updateErr) {
+        console.error(`[Cron] Failed to update reply_category for email ${email.id}:`, updateErr);
+        // Fallback: mark as processed anyway to stop re-processing
+        await supabase
+          .from("emails")
+          .update({ reply_category: "unknown" })
+          .eq("id", email.id);
+        continue;
+      }
 
       // Update prospect status based on category
       const statusMap: Record<string, string> = {

@@ -2,7 +2,7 @@ name: "Cron: Check Gmail Replies"
 
 on:
   schedule:
-    - cron: "*/5 * * * *"  # Every 5 minutes (GitHub Actions minimum reliable interval)
+    - cron: "*/10 * * * *"  # Every 10 minutes (GitHub Actions minimum reliable interval)
   workflow_dispatch: {}
 
 jobs:
