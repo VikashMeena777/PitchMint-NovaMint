@@ -63,7 +63,7 @@ export default function PrivacyPolicyPage() {
             <p>When you choose to connect your Gmail account, we request access to the following scopes:</p>
             <ul className="list-disc ml-6 space-y-1.5 mt-2">
               <li><strong>Gmail Send (<code className="text-xs bg-[var(--pp-bg-card)] px-1.5 py-0.5 rounded">gmail.send</code>):</strong> Allows PitchMint to send outreach emails from your Gmail account on your behalf. We only send emails that you have explicitly composed or approved through our platform.</li>
-              <li><strong>Gmail Metadata (<code className="text-xs bg-[var(--pp-bg-card)] px-1.5 py-0.5 rounded">gmail.metadata</code>):</strong> Allows PitchMint to read email metadata (sender, recipient, subject line, date) to detect when a prospect has replied to your outreach email. We only check for replies to emails that were sent through PitchMint. We do <strong>not</strong> read the body or content of any emails — only headers and metadata.</li>
+              <li><strong>Gmail Read-Only (<code className="text-xs bg-[var(--pp-bg-card)] px-1.5 py-0.5 rounded">gmail.readonly</code>):</strong> Allows PitchMint to detect when a prospect has replied to your outreach email. We search only for direct replies to emails sent through PitchMint (matched by sender and subject). When a reply is found, we read the reply content to automatically categorize it (e.g., Interested, Not Interested, Out of Office) and display a preview in your dashboard. We do <strong>not</strong> scan, index, or read any other emails in your inbox.</li>
               <li><strong>Email Address (<code className="text-xs bg-[var(--pp-bg-card)] px-1.5 py-0.5 rounded">userinfo.email</code>):</strong> Used to identify your Google account and display your connected Gmail address in your settings.</li>
             </ul>
 
@@ -71,7 +71,7 @@ export default function PrivacyPolicyPage() {
             <p>Your Google data is used exclusively for the following purposes:</p>
             <ul className="list-disc ml-6 space-y-1.5 mt-2">
               <li><strong>Sending Emails:</strong> We use the Gmail API to send outreach emails that you create, schedule, or approve through PitchMint. We never send unsolicited emails without your action.</li>
-              <li><strong>Reply Detection:</strong> We periodically check your Gmail metadata to detect replies from prospects to emails you sent through PitchMint. When a reply is detected, we update the prospect&apos;s status to &quot;Replied&quot; and pause any automated follow-up sequences. We only read email headers (From, Subject, Date) — never the email body or content.</li>
+              <li><strong>Reply Detection &amp; Categorization:</strong> We periodically check your Gmail for replies from prospects to emails you sent through PitchMint. When a reply is detected, we read the reply content to automatically categorize it (e.g., Interested, Not Interested, Out of Office) using AI, update the prospect&apos;s status, display a reply preview in your dashboard, and pause any automated follow-up sequences. We only search for and read direct replies to PitchMint-sent emails — we never scan or access any other emails in your inbox.</li>
               <li><strong>Account Identification:</strong> We display your connected Gmail address in your Settings page so you can verify which account is connected.</li>
             </ul>
             <p className="mt-3">
@@ -83,7 +83,7 @@ export default function PrivacyPolicyPage() {
             <ul className="list-disc ml-6 space-y-1.5 mt-2">
               <li><strong>OAuth Tokens:</strong> We securely store your Gmail OAuth refresh token and access token in our database (Supabase, hosted on AWS). These tokens are stored in encrypted columns with row-level security, ensuring only your account can access them.</li>
               <li><strong>Gmail Address:</strong> Your connected Gmail address is stored in your user profile for display purposes.</li>
-              <li><strong>Reply Detection Data:</strong> When a reply is detected, we store only the fact that a reply was received (timestamp and reply status). We do not store any email body content obtained via Google APIs.</li>
+              <li><strong>Reply Detection Data:</strong> When a reply is detected, we store the reply content (capped at 5,000 characters), the reply timestamp, and the AI-generated category. This data is used to display reply previews in your dashboard and in daily digest emails. It is never shared with third parties or used for any purpose beyond providing the PitchMint application features.</li>
             </ul>
 
             <h3 className="text-lg font-medium text-[var(--pp-text-primary)] mt-5 mb-2">3.4 How to Disconnect &amp; Delete Google Data</h3>
