@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   // Find emails with has_reply=true but no reply_body
   const { data: repliedEmails, error } = await supabase
     .from("emails")
-    .select("id, to_email, subject, user_id")
+    .select("id, to_email, subject, user_id, reply_received_at")
     .eq("has_reply", true)
     .is("reply_body", null)
     .limit(50);
