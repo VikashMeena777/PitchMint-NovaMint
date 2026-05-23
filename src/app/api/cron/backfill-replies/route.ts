@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getValidToken } from "@/lib/email/gmail";
 
 /**
  * One-time backfill: Re-fetch reply bodies from Gmail for emails
@@ -48,53 +49,11 @@ export async function GET(req: Request) {
   let errors = 0;
 
   for (const [userId, emails] of Object.entries(byUser)) {
-    // Get the user's Gmail token
-    const { data: userRow } = await supabase
-      .from("users")
-      .select("gmail_access_token, gmail_refresh_token, gmail_token_expiry")
-      .eq("id", userId)
-      .single();
+    const accessToken = await getValidToken(userId);
 
-    if (!userRow?.gmail_access_token) {
+    if (!accessToken) {
       errors += emails.length;
       continue;
-    }
-
-    let accessToken = userRow.gmail_access_token;
-
-    // Refresh token if expired
-    const expiry = userRow.gmail_token_expiry
-      ? new Date(userRow.gmail_token_expiry).getTime()
-      : 0;
-    if (Date.now() > expiry - 60000 && userRow.gmail_refresh_token) {
-      try {
-        const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            grant_type: "refresh_token",
-            refresh_token: userRow.gmail_refresh_token,
-            client_id: process.env.GMAIL_OAUTH_CLIENT_ID || "",
-            client_secret: process.env.GMAIL_OAUTH_CLIENT_SECRET || "",
-          }),
-        });
-        const tokenData = await tokenRes.json();
-        if (tokenData.access_token) {
-          accessToken = tokenData.access_token;
-          await supabase
-            .from("users")
-            .update({
-              gmail_access_token: accessToken,
-              gmail_token_expiry: new Date(
-                Date.now() + (tokenData.expires_in || 3600) * 1000
-              ).toISOString(),
-            })
-            .eq("id", userId);
-        }
-      } catch {
-        errors += emails.length;
-        continue;
-      }
     }
 
     for (const email of emails) {

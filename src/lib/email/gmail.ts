@@ -67,7 +67,7 @@ async function refreshGmailToken(
 /**
  * Get a valid Gmail access token, refreshing if needed
  */
-async function getValidToken(userId: string): Promise<string | null> {
+export async function getValidToken(userId: string): Promise<string | null> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !supabaseKey) return null;
@@ -82,7 +82,7 @@ async function getValidToken(userId: string): Promise<string | null> {
     .eq("id", userId)
     .single();
 
-  if (!user?.gmail_access_token) return null;
+  if (!user) return null;
 
   // Check if token is still valid (with 5-minute buffer)
   const expiresAt = user.gmail_token_expires_at
@@ -90,24 +90,32 @@ async function getValidToken(userId: string): Promise<string | null> {
     : new Date(0);
   const isExpired = expiresAt.getTime() - 5 * 60 * 1000 < Date.now();
 
-  if (!isExpired) return user.gmail_access_token;
+  // If we have a valid access token and it's not expired, return it
+  if (user.gmail_access_token && !isExpired) {
+    return user.gmail_access_token;
+  }
 
-  // Refresh the token
-  if (!user.gmail_refresh_token) return null;
+  // If access token is expired or missing, try to refresh it
+  if (user.gmail_refresh_token) {
+    console.log(`[Gmail] Refreshing expired or missing access token for user ${userId}`);
+    const refreshed = await refreshGmailToken(user.gmail_refresh_token);
+    if (refreshed) {
+      // Store the new token
+      await supabase
+        .from("users")
+        .update({
+          gmail_access_token: refreshed.accessToken,
+          gmail_token_expires_at: refreshed.expiresAt,
+        })
+        .eq("id", userId);
 
-  const refreshed = await refreshGmailToken(user.gmail_refresh_token);
-  if (!refreshed) return null;
+      return refreshed.accessToken;
+    } else {
+      console.warn(`[Gmail] Failed to refresh token for user ${userId}`);
+    }
+  }
 
-  // Store the new token
-  await supabase
-    .from("users")
-    .update({
-      gmail_access_token: refreshed.accessToken,
-      gmail_token_expires_at: refreshed.expiresAt,
-    })
-    .eq("id", userId);
-
-  return refreshed.accessToken;
+  return null;
 }
 
 /**
