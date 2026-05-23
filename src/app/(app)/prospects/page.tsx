@@ -24,7 +24,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  Eye,
 } from "lucide-react";
+import Link from "next/link";
 
 type ProspectRow = {
   id: string;
@@ -267,9 +269,9 @@ export default function ProspectsPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div>
-                            <p className="text-sm font-medium text-[var(--pp-text-primary)]">
+                            <Link href={`/prospects/${p.id}`} className="text-sm font-medium text-[var(--pp-text-primary)] hover:underline hover:text-[var(--pp-accent1)] transition-colors">
                               {[p.first_name, p.last_name].filter(Boolean).join(" ") || p.email}
-                            </p>
+                            </Link>
                             <div className="flex items-center gap-2 mt-0.5">
                               <Mail className="w-3 h-3 text-[var(--pp-text-muted)]" />
                               <span className="text-xs text-[var(--pp-text-muted)]">{p.email}</span>
@@ -306,6 +308,13 @@ export default function ProspectsPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-1">
+                            <Link
+                              href={`/prospects/${p.id}`}
+                              className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--pp-bg-surface2)] text-[var(--pp-text-muted)] hover:text-[var(--pp-accent1)] transition-colors cursor-pointer"
+                              title="View Details"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </Link>
                             <button
                               onClick={() => setAiTarget(p)}
                               className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--pp-accent1)]/10 text-[var(--pp-text-muted)] hover:text-[var(--pp-accent1)] transition-colors cursor-pointer"
