@@ -1,12 +1,10 @@
 import Groq from "groq-sdk";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // ============================================
-// AI PROVIDER MANAGEMENT (Groq primary → Gemini fallback)
+// AI PROVIDER MANAGEMENT (Groq primary → Nvidia NIM fallback)
 // ============================================
 
 let groqClient: Groq | null = null;
-let geminiClient: GoogleGenerativeAI | null = null;
 
 function getGroqClient(): Groq | null {
   if (!process.env.GROQ_API_KEY) return null;
@@ -16,16 +14,60 @@ function getGroqClient(): Groq | null {
   return groqClient;
 }
 
-function getGeminiClient(): GoogleGenerativeAI | null {
-  if (!process.env.GOOGLE_GEMINI_API_KEY) return null;
-  if (!geminiClient) {
-    geminiClient = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
+async function callNvidiaAI(
+  prompt: string,
+  options: {
+    temperature?: number;
+    maxTokens?: number;
+    systemPrompt?: string;
+  } = {}
+): Promise<string | null> {
+  const apiKey = process.env.NVIDIA_API_KEY;
+  if (!apiKey) return null;
+
+  const { temperature = 0.7, maxTokens = 1024, systemPrompt } = options;
+
+  try {
+    const messages = [];
+    if (systemPrompt) {
+      messages.push({ role: "system", content: systemPrompt });
+    }
+    messages.push({ role: "user", content: prompt });
+
+    const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "meta/llama-3.3-70b-instruct",
+        messages,
+        temperature,
+        max_tokens: maxTokens,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn(`[AI] Nvidia NIM API error status ${response.status}:`, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (content) {
+      console.log("[AI] Nvidia NIM response received");
+      return content;
+    }
+  } catch (error) {
+    console.error("[AI] Nvidia NIM execution failed:", error);
   }
-  return geminiClient;
+  return null;
 }
 
 /**
- * Call AI with automatic failover: Groq → Gemini
+ * Call AI with automatic failover: Groq → Nvidia NIM
  */
 async function callAI(
   prompt: string,
@@ -61,36 +103,14 @@ async function callAI(
         return content;
       }
     } catch (error) {
-      console.warn("[AI] Groq failed, trying Gemini fallback:", error);
+      console.warn("[AI] Groq failed, trying Nvidia NIM fallback:", error);
     }
   }
 
-  // Fallback to Gemini
-  const gemini = getGeminiClient();
-  if (gemini) {
-    try {
-      const model = gemini.getGenerativeModel({
-        model: "gemini-2.0-flash",
-        generationConfig: {
-          temperature,
-          maxOutputTokens: maxTokens,
-          responseMimeType: "application/json",
-        },
-      });
-
-      const fullPrompt = systemPrompt
-        ? `${systemPrompt}\n\n${prompt}`
-        : prompt;
-
-      const result = await model.generateContent(fullPrompt);
-      const content = result.response.text();
-      if (content) {
-        console.log("[AI] Gemini response received");
-        return content;
-      }
-    } catch (error) {
-      console.error("[AI] Gemini also failed:", error);
-    }
+  // Fallback to Nvidia NIM
+  const content = await callNvidiaAI(prompt, options);
+  if (content) {
+    return content;
   }
 
   console.error("[AI] All providers failed — no API keys configured?");
