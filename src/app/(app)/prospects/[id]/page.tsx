@@ -774,19 +774,24 @@ export default function ProspectDetailPage() {
                         </div>
 
                         {/* Reply Content Preview — uses gmail.readonly scope */}
-                        {email.has_reply && email.reply_body && (
+                        {email.has_reply && (
                           <div className="mt-3 pt-3 border-t border-zinc-800">
                             <div className="flex items-center gap-2 mb-1.5">
                               <MessageSquare className="h-3.5 w-3.5 text-green-400" />
                               <span className="text-xs font-medium text-green-400">Reply from prospect</span>
+                              {email.reply_category && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-300 border border-green-500/20">
+                                  {email.reply_category}
+                                </span>
+                              )}
                               {email.reply_received_at && (
-                                <span className="text-xs text-zinc-600">
+                                <span className="text-xs text-zinc-600 ml-auto">
                                   {new Date(email.reply_received_at).toLocaleString()}
                                 </span>
                               )}
                             </div>
                             <p className="text-sm text-zinc-300 bg-zinc-800/50 rounded-md px-3 py-2 line-clamp-4 leading-relaxed">
-                              {email.reply_body}
+                              {email.reply_body || "Reply detected — content will be fetched on next sync."}
                             </p>
                           </div>
                         )}
