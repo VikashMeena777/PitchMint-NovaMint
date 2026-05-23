@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SpotlightCard } from "@/components/ui/card-spotlight";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -291,7 +292,7 @@ export default function ProspectDetailPage() {
         {/* Left: Contact Info + Stats */}
         <div className="space-y-6">
           {/* Contact Card */}
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <SpotlightCard className="bg-zinc-900/50 border-zinc-800" accentColor="rgba(95, 93, 240, 0.12)">
             <CardHeader>
               <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
                 <User className="h-4 w-4" /> Contact Info
@@ -468,10 +469,10 @@ export default function ProspectDetailPage() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </SpotlightCard>
 
           {/* Stats Card */}
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <SpotlightCard className="bg-zinc-900/50 border-zinc-800" accentColor="rgba(139, 92, 246, 0.12)">
             <CardHeader>
               <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
                 <Activity className="h-4 w-4" /> Engagement
@@ -537,7 +538,7 @@ export default function ProspectDetailPage() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </SpotlightCard>
         </div>
 
         {/* Right: Tabs (Research, Emails, Activity) */}

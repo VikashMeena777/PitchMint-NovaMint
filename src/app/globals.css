@@ -59,42 +59,42 @@
    PITCHMINT CUSTOM DESIGN TOKENS
    ───────────────────────────────────────────── */
 :root {
-  /* Core background tones */
-  --pp-bg-deepest: #020617;
-  --pp-bg-surface: #0a0f1e;
-  --pp-bg-surface2: #111827;
-  --pp-bg-elevated: #1a2236;
+  /* Core background tones — Tailored deep navy midnight gradients */
+  --pp-bg-deepest: #02040a;    /* Cinematic deep ink black */
+  --pp-bg-surface: #070b15;    /* Deep cinematic obsidian */
+  --pp-bg-surface2: #0e1424;   /* Rich slate navy */
+  --pp-bg-elevated: #1a2236;   /* Slate contrast */
 
-  /* Accent colors — Monochromatic Indigo / Violet / Cyan */
-  --pp-accent1: #6366f1;        /* Primary indigo */
-  --pp-accent1-light: #818cf8;
-  --pp-accent1-dark: #4f46e5;
-  --pp-accent2: #8b5cf6;        /* Violet */
-  --pp-accent2-light: #a78bfa;
-  --pp-accent3: #06b6d4;        /* Cyan */
-  --pp-accent3-light: #22d3ee;
-  --pp-accent4: #a855f7;        /* Purple */
-  --pp-accent4-light: #c084fc;
+  /* Accent colors — Elevated to be much more vibrant and rich */
+  --pp-accent1: #5d5cff;        /* Vivid Electric Indigo */
+  --pp-accent1-light: #8482ff;  /* Vibrant Indigo light */
+  --pp-accent1-dark: #3c3ae0;   /* Saturated deep Indigo */
+  --pp-accent2: #8c3dfc;        /* Royal Violet */
+  --pp-accent2-light: #ab7dff;  /* Violet glow */
+  --pp-accent3: #00f0ff;        /* Neon Electric Cyan */
+  --pp-accent3-light: #3dfcff;  /* Cyan glow */
+  --pp-accent4: #d946ef;        /* Vivid Fuchsia / Purple */
+  --pp-accent4-light: #f472b6;  /* Pink glow */
 
   /* Text system */
   --pp-text-primary: #f8fafc;
-  --pp-text-secondary: #94a3b8;
-  --pp-text-muted: #64748b;
+  --pp-text-secondary: #cbd5e1;
+  --pp-text-muted: #8294ad;     /* Slightly higher contrast muted text */
 
-  /* Border system */
-  --pp-border-subtle: rgba(255, 255, 255, 0.06);
-  --pp-border-default: rgba(255, 255, 255, 0.10);
+  /* Border system — tinted glass borders */
+  --pp-border-subtle: rgba(93, 92, 255, 0.06);
+  --pp-border-default: rgba(93, 92, 255, 0.12);
   --pp-border-strong: rgba(255, 255, 255, 0.16);
-  --pp-border-accent: rgba(99, 102, 241, 0.35);
+  --pp-border-accent: rgba(93, 92, 255, 0.4);
 
   /* Glow system — colored shadows, never grey */
-  --pp-glow-indigo: rgba(99, 102, 241, 0.15);
-  --pp-glow-indigo-strong: rgba(99, 102, 241, 0.35);
-  --pp-glow-violet: rgba(139, 92, 246, 0.15);
-  --pp-glow-cyan: rgba(6, 182, 212, 0.15);
-  --pp-glow-purple: rgba(168, 85, 247, 0.15);
+  --pp-glow-indigo: rgba(93, 92, 255, 0.22);
+  --pp-glow-indigo-strong: rgba(93, 92, 255, 0.45);
+  --pp-glow-violet: rgba(140, 61, 252, 0.22);
+  --pp-glow-cyan: rgba(0, 240, 255, 0.22);
+  --pp-glow-purple: rgba(217, 70, 239, 0.22);
 
-  /* Spacing (kept as reference, Tailwind handles most) */
+  /* Spacing */
   --pp-space-xs: 0.25rem;
   --pp-space-sm: 0.5rem;
   --pp-space-md: 1rem;
@@ -155,37 +155,37 @@
 
 /* ━━━ DARK MODE — Primary design language ━━━ */
 .dark {
-  --background: #020617;
+  --background: #02040a;
   --foreground: #f8fafc;
-  --card: #0a0f1e;
+  --card: #070b15;
   --card-foreground: #f8fafc;
-  --popover: #0a0f1e;
+  --popover: #070b15;
   --popover-foreground: #f8fafc;
-  --primary: #6366f1;
+  --primary: #5d5cff;
   --primary-foreground: #f8fafc;
-  --secondary: #111827;
+  --secondary: #0e1424;
   --secondary-foreground: #e2e8f0;
-  --muted: #1a2236;
+  --muted: #141b2d;
   --muted-foreground: #94a3b8;
-  --accent: #1e1b4b;
+  --accent: #11132a;
   --accent-foreground: #c7d2fe;
   --destructive: #ef4444;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.08);
-  --ring: #6366f1;
-  --chart-1: #818cf8;
+  --border: rgba(93, 92, 255, 0.12);
+  --input: rgba(93, 92, 255, 0.12);
+  --ring: #5d5cff;
+  --chart-1: #8482ff;
   --chart-2: #4ade80;
   --chart-3: #fbbf24;
   --chart-4: #f472b6;
-  --chart-5: #22d3ee;
-  --sidebar: #050a18;
+  --chart-5: #00f0ff;
+  --sidebar: #03060f;
   --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #6366f1;
+  --sidebar-primary: #5d5cff;
   --sidebar-primary-foreground: #f8fafc;
-  --sidebar-accent: #111827;
+  --sidebar-accent: #0e1424;
   --sidebar-accent-foreground: #e2e8f0;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: #6366f1;
+  --sidebar-border: rgba(93, 92, 255, 0.08);
+  --sidebar-ring: #5d5cff;
 }
 
 
@@ -195,6 +195,25 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Custom scrollbar matching cinematic theme */
+    &::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: var(--pp-bg-deepest);
+    }
+    &::-webkit-scrollbar-thumb {
+      background: var(--pp-border-strong);
+      border-radius: 9999px;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background: var(--pp-accent1-light);
+    }
+  }
+  ::selection {
+    background: rgba(95, 93, 240, 0.25);
+    color: #ffffff;
   }
   body {
     @apply bg-background text-foreground;

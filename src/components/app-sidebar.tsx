@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -77,6 +77,21 @@ export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved !== null) {
+      setCollapsed(saved === "true");
+    }
+  }, []);
+
+  const toggleCollapsed = () => {
+    const nextState = !collapsed;
+    setCollapsed(nextState);
+    localStorage.setItem("sidebar-collapsed", String(nextState));
+  };
 
   async function handleLogout() {
     const supabase = createClient();
@@ -91,27 +106,33 @@ export function AppSidebar() {
     <motion.aside
       initial={false}
       animate={{ width: collapsed ? 72 : 240 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      className="h-screen sticky top-0 flex flex-col border-r border-[var(--pp-border-subtle)] bg-[var(--pp-bg-deepest)] z-40"
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="h-screen sticky top-0 flex flex-col border-r border-[var(--pp-border-subtle)] bg-[rgba(3,7,18,0.7)] backdrop-blur-xl z-40"
     >
       {/* Logo */}
       <div className="flex items-center h-16 border-b border-[var(--pp-border-subtle)] px-4">
         <Link href="/" className="flex items-center gap-2.5 cursor-pointer group">
-          <Image
+          <motion.div
+            whileHover={{ scale: 1.08, rotate: 3 }}
+            whileTap={{ scale: 0.93 }}
+            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+          >
+            <Image
               src="/PitchMint Logo.jpg"
               alt="PitchMint"
               width={36}
               height={36}
-              className="rounded-xl flex-shrink-0 shadow-md transition-transform duration-200 group-hover:scale-105"
+              className="rounded-xl flex-shrink-0 shadow-[0_0_15px_rgba(95,93,240,0.2)] border border-[var(--pp-border-default)] transition-all"
             />
+          </motion.div>
           <AnimatePresence>
             {!collapsed && (
               <motion.span
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.2 }}
-                className="text-lg font-bold tracking-tight text-[var(--pp-text-primary)] whitespace-nowrap"
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="text-lg font-bold tracking-tight text-[var(--pp-text-primary)] whitespace-nowrap bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 PitchMint
@@ -129,7 +150,8 @@ export function AppSidebar() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative overflow-hidden rounded-xl p-3 bg-gradient-to-br from-[var(--pp-accent1)]/10 to-[var(--pp-accent2)]/5 border border-[var(--pp-border-accent)]"
+              whileHover={{ y: -1 }}
+              className="relative overflow-hidden rounded-xl p-3 bg-gradient-to-br from-[var(--pp-accent1)]/10 to-[var(--pp-accent2)]/5 border border-[var(--pp-border-accent)] shadow-[0_0_15px_rgba(95,93,240,0.05)]"
             >
               <div className="flex items-center gap-2">
                 <div className="icon-container icon-container-sm bg-gradient-to-br from-[var(--pp-accent1)]/20 to-[var(--pp-accent2)]/10">
@@ -147,7 +169,7 @@ export function AppSidebar() {
           ) : (
             <Tooltip>
               <TooltipTrigger>
-                <div className="icon-container icon-container-sm bg-gradient-to-br from-[var(--pp-accent1)]/15 to-[var(--pp-accent2)]/8 border border-[var(--pp-border-accent)] mx-auto cursor-default">
+                <div className="icon-container icon-container-sm bg-gradient-to-br from-[var(--pp-accent1)]/15 to-[var(--pp-accent2)]/8 border border-[var(--pp-border-accent)] mx-auto cursor-default shadow-[0_0_10px_rgba(95,93,240,0.05)]">
                   <Sparkles className="w-3.5 h-3.5 text-[var(--pp-accent1-light)]" />
                 </div>
               </TooltipTrigger>
@@ -168,55 +190,67 @@ export function AppSidebar() {
           return collapsed ? (
             <Tooltip key={item.href}>
               <TooltipTrigger>
-                <Link
-                  href={item.href}
-                  className={`
-                    flex items-center justify-center w-10 h-10 mx-auto rounded-xl
-                    transition-all duration-200 cursor-pointer
-                    ${isActive
-                      ? "bg-[var(--pp-accent1)]/15 text-[var(--pp-accent1-light)] shadow-sm"
-                      : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]"
-                    }
-                  `}
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
-                  <Icon className="w-5 h-5" />
-                </Link>
+                  <Link
+                    href={item.href}
+                    className={`
+                      flex items-center justify-center w-10 h-10 mx-auto rounded-xl
+                      transition-all duration-200 cursor-pointer
+                      ${isActive
+                        ? "bg-[var(--pp-accent1)]/20 text-white shadow-[0_0_15px_rgba(95,93,240,0.15)] border border-[rgba(95,93,240,0.3)]"
+                        : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]"
+                      }
+                    `}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </Link>
+                </motion.div>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
                 {item.label}
               </TooltipContent>
             </Tooltip>
           ) : (
-            <Link
+            <motion.div
               key={item.href}
-              href={item.href}
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-xl
-                transition-all duration-200 cursor-pointer group
-                ${isActive
-                  ? "bg-[var(--pp-accent1)]/15 text-[var(--pp-accent1-light)] shadow-sm"
-                  : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]"
-                }
-              `}
+              whileHover={{ x: 3 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm font-medium">{item.label}</span>
-              {isActive && (
-                <motion.div
-                  layoutId="sidebar-active-pill"
-                  className="absolute left-0 w-[3px] h-6 rounded-r-full bg-[var(--pp-accent1)]"
-                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                />
-              )}
-            </Link>
+              <Link
+                href={item.href}
+                className={`
+                  flex items-center gap-3 px-3 py-2.5 rounded-xl
+                  transition-all duration-200 cursor-pointer group relative
+                  ${isActive
+                    ? "bg-[var(--pp-accent1)]/15 text-white shadow-[0_0_15px_rgba(95,93,240,0.1)] border border-[rgba(95,93,240,0.2)]"
+                    : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]/50"
+                  }
+                `}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm font-medium">{item.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-active-pill"
+                    className="absolute left-0 w-[3px] h-6 rounded-r-full bg-[var(--pp-accent1)] shadow-[0_0_8px_rgba(95,93,240,0.8)]"
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                  />
+                )}
+              </Link>
+            </motion.div>
           );
         })}
       </nav>
 
       {/* Bottom section */}
       <div className="px-3 pb-3 space-y-1 pt-3">
-        {/* Gradient section divider */}
-        <div className="section-divider mb-3" />
+        <div className="h-px bg-gradient-to-r from-transparent via-[var(--pp-border-strong)] to-transparent mb-3" />
+        
         {bottomNavItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -224,40 +258,52 @@ export function AppSidebar() {
           return collapsed ? (
             <Tooltip key={item.href}>
               <TooltipTrigger>
-                <Link
-                  href={item.href}
-                  className={`
-                    flex items-center justify-center w-10 h-10 mx-auto rounded-xl
-                    transition-all duration-200 cursor-pointer
-                    ${isActive
-                      ? "bg-[var(--pp-accent1)]/15 text-[var(--pp-accent1-light)]"
-                      : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]"
-                    }
-                  `}
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
-                  <Icon className="w-5 h-5" />
-                </Link>
+                  <Link
+                    href={item.href}
+                    className={`
+                      flex items-center justify-center w-10 h-10 mx-auto rounded-xl
+                      transition-all duration-200 cursor-pointer
+                      ${isActive
+                        ? "bg-[var(--pp-accent1)]/20 text-white shadow-[0_0_15px_rgba(95,93,240,0.15)] border border-[rgba(95,93,240,0.3)]"
+                        : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]"
+                      }
+                    `}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </Link>
+                </motion.div>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
                 {item.label}
               </TooltipContent>
             </Tooltip>
           ) : (
-            <Link
+            <motion.div
               key={item.href}
-              href={item.href}
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-xl
-                transition-all duration-200 cursor-pointer
-                ${isActive
-                  ? "bg-[var(--pp-accent1)]/15 text-[var(--pp-accent1-light)]"
-                  : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]"
-                }
-              `}
+              whileHover={{ x: 3 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm font-medium">{item.label}</span>
-            </Link>
+              <Link
+                href={item.href}
+                className={`
+                  flex items-center gap-3 px-3 py-2.5 rounded-xl
+                  transition-all duration-200 cursor-pointer
+                  ${isActive
+                    ? "bg-[var(--pp-accent1)]/15 text-white shadow-[0_0_15px_rgba(95,93,240,0.1)] border border-[rgba(95,93,240,0.2)]"
+                    : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]/50"
+                  }
+                `}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm font-medium">{item.label}</span>
+              </Link>
+            </motion.div>
           );
         })}
 
@@ -265,50 +311,67 @@ export function AppSidebar() {
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleLogout}
-                className="w-10 h-10 mx-auto text-[var(--pp-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer"
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
               >
-                <LogOut className="w-5 h-5" />
-              </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  className="w-10 h-10 mx-auto text-[var(--pp-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer"
+                >
+                  <LogOut className="w-5 h-5" />
+                </Button>
+              </motion.div>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={8}>
               Sign out
             </TooltipContent>
           </Tooltip>
         ) : (
-          <Button
-            variant="ghost"
-            onClick={handleLogout}
-            className="w-full justify-start gap-3 px-3 py-2.5 h-auto text-[var(--pp-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer"
+          <motion.div
+            whileHover={{ x: 3 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
           >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            <span className="text-sm font-medium">Sign out</span>
-          </Button>
+            <Button
+              variant="ghost"
+              onClick={handleLogout}
+              className="w-full justify-start gap-3 px-3 py-2.5 h-auto text-[var(--pp-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer"
+            >
+              <LogOut className="w-5 h-5 flex-shrink-0" />
+              <span className="text-sm font-medium">Sign out</span>
+            </Button>
+          </motion.div>
         )}
 
         {/* Collapse toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          className={`
-            ${collapsed ? "w-10 h-10 mx-auto" : "w-full h-10"}
-            text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)]
-            hover:bg-[var(--pp-bg-surface2)] transition-all duration-200 cursor-pointer
-          `}
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
-          {collapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <div className="flex items-center gap-2 w-full px-1">
-              <ChevronLeft className="w-4 h-4" />
-              <span className="text-xs">Collapse</span>
-            </div>
-          )}
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleCollapsed}
+            className={`
+              ${collapsed ? "w-10 h-10 mx-auto" : "w-full h-10"}
+              text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)]
+              hover:bg-[var(--pp-bg-surface2)] transition-all duration-200 cursor-pointer
+            `}
+          >
+            {collapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <div className="flex items-center gap-2 w-full px-1">
+                <ChevronLeft className="w-4 h-4" />
+                <span className="text-xs">Collapse</span>
+              </div>
+            )}
+          </Button>
+        </motion.div>
       </div>
     </motion.aside>
   );

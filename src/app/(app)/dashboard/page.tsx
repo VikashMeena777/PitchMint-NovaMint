@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { SpotlightCard } from "@/components/ui/card-spotlight";
 import Link from "next/link";
 import { getDashboardStats } from "@/lib/actions/user";
 
@@ -170,51 +171,43 @@ export default function DashboardPage() {
         {stats.map((stat, i) => {
           const Icon = stat.icon;
           return (
-            <motion.div
+            <SpotlightCard
               key={stat.label}
               custom={i + 1}
               initial="hidden"
               animate="show"
               variants={fadeInUp}
-              className="relative group rounded-2xl p-5 bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] card-hover card-spotlight card-top-accent overflow-hidden"
+              topAccent
+              accentColor={`color-mix(in srgb, ${stat.accent} 16%, transparent)`}
               style={{ "--accent-gradient": `linear-gradient(90deg, ${stat.accent}, transparent)` } as React.CSSProperties}
             >
-              {/* Hover glow */}
-              <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"
-                style={{
-                  background: `radial-gradient(circle at 50% 50%, color-mix(in srgb, ${stat.accent} 10%, transparent), transparent 70%)`,
-                }}
-              />
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`icon-container icon-container-md bg-gradient-to-br ${stat.gradient}`}>
-                    <Icon className="w-5 h-5" style={{ color: stat.accent }} />
+              <div className="flex items-center justify-between mb-3">
+                <div className={`icon-container icon-container-md bg-gradient-to-br ${stat.gradient}`}>
+                  <Icon className="w-5 h-5" style={{ color: stat.accent }} />
+                </div>
+                {!isLoading && (
+                  <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--pp-accent2-light)] bg-[var(--pp-accent2)]/8 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--pp-accent2-light)] animate-pulse" />
+                    Live
                   </div>
-                  {!isLoading && (
-                    <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--pp-accent2-light)] bg-[var(--pp-accent2)]/8 px-2 py-0.5 rounded-full">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--pp-accent2-light)] animate-pulse" />
-                      Live
-                    </div>
-                  )}
-                </div>
-                <div
-                  className="text-2xl font-bold text-[var(--pp-text-primary)] tracking-tight"
-                  style={{ fontFamily: "var(--font-display)" }}
-                >
-                  {isLoading ? (
-                    <span className="inline-block w-16 h-7 bg-[var(--pp-bg-surface2)] rounded animate-pulse" />
-                  ) : (
-                    <AnimatedCounter
-                      value={stat.value}
-                      suffix={stat.suffix || ""}
-                      className="text-2xl font-bold"
-                    />
-                  )}
-                </div>
-                <p className="text-xs text-[var(--pp-text-muted)] mt-1">{stat.label}</p>
+                )}
               </div>
-            </motion.div>
+              <div
+                className="text-2xl font-bold text-[var(--pp-text-primary)] tracking-tight"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                {isLoading ? (
+                  <span className="inline-block w-16 h-7 bg-[var(--pp-bg-surface2)] rounded animate-pulse" />
+                ) : (
+                  <AnimatedCounter
+                    value={stat.value}
+                    suffix={stat.suffix || ""}
+                    className="text-2xl font-bold"
+                  />
+                )}
+              </div>
+              <p className="text-xs text-[var(--pp-text-muted)] mt-1">{stat.label}</p>
+            </SpotlightCard>
           );
         })}
       </div>
@@ -317,12 +310,13 @@ export default function DashboardPage() {
             const Icon = action.icon;
             return (
               <Link key={action.label} href={action.href} className="block group cursor-pointer">
-                <motion.div
+                <SpotlightCard
                   custom={i + 7}
                   initial="hidden"
                   animate="show"
                   variants={fadeInUp}
-                  className="rounded-2xl p-4 bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] card-hover"
+                  className="p-4"
+                  accentColor={`color-mix(in srgb, ${action.accent} 16%, transparent)`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`icon-container icon-container-md bg-gradient-to-br ${action.gradient}`}>
@@ -336,13 +330,20 @@ export default function DashboardPage() {
                     </div>
                     <ArrowUpRight className="w-4 h-4 text-[var(--pp-text-muted)] ml-auto flex-shrink-0 group-hover:text-[var(--pp-accent1-light)] transition-all duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </div>
-                </motion.div>
+                </SpotlightCard>
               </Link>
             );
           })}
 
           {/* Active Sequences Summary */}
-          <motion.div custom={10} initial="hidden" animate="show" variants={fadeInUp} className="rounded-2xl p-4 bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)]">
+          <SpotlightCard
+            custom={10}
+            initial="hidden"
+            animate="show"
+            variants={fadeInUp}
+            className="p-4"
+            accentColor="rgba(95, 93, 240, 0.08)"
+          >
             <div className="flex items-center gap-2 mb-3">
               <div className="icon-container icon-container-sm bg-gradient-to-br from-[var(--pp-accent1)]/12 to-[var(--pp-accent4)]/8">
                 <CalendarCheck className="w-4 h-4 text-[var(--pp-accent1-light)]" />
@@ -360,7 +361,7 @@ export default function DashboardPage() {
                 No active sequences. Create one to start automated outreach.
               </p>
             )}
-          </motion.div>
+          </SpotlightCard>
         </motion.div>
       </div>
     </div>

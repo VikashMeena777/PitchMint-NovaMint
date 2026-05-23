@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Typewriter } from "@/components/ui/typewriter";
+import { SpotlightCard } from "@/components/ui/card-spotlight";
 
 /* Typewriter phrases for hero section */
 const heroTypewriterWords = [
@@ -432,33 +433,27 @@ export default function LandingPage() {
               const Icon = feature.icon;
               return (
                 <AnimateOnScroll key={feature.title} delay={i * 0.08}>
-                  <div className="group relative rounded-2xl p-6 bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] card-hover card-spotlight card-top-accent h-full overflow-hidden"
+                  <SpotlightCard
+                    topAccent
+                    accentColor={`color-mix(in srgb, ${feature.accent} 15%, transparent)`}
+                    className="p-6 h-full"
                     style={{ "--accent-gradient": `linear-gradient(90deg, ${feature.accent}, transparent)` } as React.CSSProperties}
                   >
-                    {/* Glow on hover */}
                     <div
-                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"
-                      style={{
-                        background: `radial-gradient(circle at 30% 30%, color-mix(in srgb, ${feature.accent} 12%, transparent), transparent 70%)`,
-                      }}
-                    />
-                    <div className="relative z-10">
-                      <div
-                        className={`icon-container icon-container-lg mb-5 bg-gradient-to-br ${feature.gradient}`}
-                      >
-                        <Icon className="w-6 h-6" style={{ color: feature.accent }} />
-                      </div>
-                      <h3
-                        className="text-lg font-semibold text-[var(--pp-text-primary)] mb-2"
-                        style={{ fontFamily: "var(--font-display)" }}
-                      >
-                        {feature.title}
-                      </h3>
-                      <p className="text-sm text-[var(--pp-text-secondary)] leading-relaxed">
-                        {feature.description}
-                      </p>
+                      className={`icon-container icon-container-lg mb-5 bg-gradient-to-br ${feature.gradient}`}
+                    >
+                      <Icon className="w-6 h-6" style={{ color: feature.accent }} />
                     </div>
-                  </div>
+                    <h3
+                      className="text-lg font-semibold text-[var(--pp-text-primary)] mb-2"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      {feature.title}
+                    </h3>
+                    <p className="text-sm text-[var(--pp-text-secondary)] leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </SpotlightCard>
                 </AnimateOnScroll>
               );
             })}
@@ -546,12 +541,13 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {plans.map((plan, i) => (
               <AnimateOnScroll key={plan.name} delay={i * 0.1}>
-                <div
-                  className={`relative rounded-2xl p-6 card-spotlight ${
+                <SpotlightCard
+                  accentColor={plan.featured ? "rgba(95, 93, 240, 0.25)" : "rgba(255, 255, 255, 0.08)"}
+                  className={`flex flex-col h-full ${
                     plan.featured
-                      ? "bg-gradient-to-b from-[var(--pp-accent1)]/8 via-[var(--pp-bg-surface)] to-[var(--pp-bg-surface)] border-2 border-[var(--pp-accent1)]/30 glow-indigo"
-                      : "bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] card-hover"
-                  } flex flex-col h-full`}
+                      ? "border-2 border-[var(--pp-accent1)]/40 shadow-[0_0_30px_rgba(95,93,240,0.15)] bg-gradient-to-b from-[var(--pp-accent1)]/6 via-[var(--pp-bg-surface)] to-[var(--pp-bg-surface)]"
+                      : ""
+                  }`}
                 >
                   {plan.featured && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -595,7 +591,7 @@ export default function LandingPage() {
                   >
                     <Link href="/signup">{plan.cta}</Link>
                   </Button>
-                </div>
+                </SpotlightCard>
               </AnimateOnScroll>
             ))}
           </div>

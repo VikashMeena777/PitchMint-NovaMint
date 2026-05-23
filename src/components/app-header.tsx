@@ -60,12 +60,16 @@ export function AppHeader({ onMobileMenuToggle }: { onMobileMenuToggle?: () => v
         </Button>
 
         {/* Search */}
-        <div className="max-w-md w-full">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--pp-text-muted)]" />
+        <div
+          onClick={() => window.dispatchEvent(new CustomEvent("toggle-command-palette"))}
+          className="max-w-md w-full cursor-pointer group"
+        >
+          <div className="relative pointer-events-none">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--pp-text-muted)] group-hover:text-[var(--pp-accent1-light)] transition-colors duration-200" />
             <Input
+              readOnly
               placeholder="Search prospects, sequences..."
-              className="pl-10 h-9 bg-[var(--pp-bg-surface)] border-[var(--pp-border-subtle)] text-sm text-[var(--pp-text-primary)] placeholder:text-[var(--pp-text-muted)] input-glow transition-all duration-200 w-full"
+              className="pl-10 h-9 bg-[var(--pp-bg-surface)] border-[var(--pp-border-subtle)] group-hover:border-[var(--pp-border-accent)] text-sm text-[var(--pp-text-primary)] placeholder:text-[var(--pp-text-muted)] transition-all duration-200 w-full cursor-pointer"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 text-[10px] text-[var(--pp-text-muted)] bg-[var(--pp-bg-surface2)] border border-[var(--pp-border-subtle)] rounded font-mono">

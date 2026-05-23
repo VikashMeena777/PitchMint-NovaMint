@@ -165,7 +165,7 @@ export default function ProspectsPage() {
             placeholder="Search by name, email, or company..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-            className="pl-10 bg-[var(--pp-bg-surface)] border-[var(--pp-border-default)] text-[var(--pp-text-primary)] placeholder:text-[var(--pp-text-muted)] focus:border-[var(--pp-accent1)]"
+            className="pl-10 bg-[var(--pp-bg-surface)] border-[var(--pp-border-default)] text-[var(--pp-text-primary)] placeholder:text-[var(--pp-text-muted)] input-glow transition-all duration-200"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -173,7 +173,7 @@ export default function ProspectsPage() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-            className="bg-[var(--pp-bg-surface)] border border-[var(--pp-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--pp-text-primary)] focus:border-[var(--pp-accent1)] outline-none cursor-pointer"
+            className="bg-[var(--pp-bg-surface)] border border-[var(--pp-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--pp-text-primary)] input-glow transition-all duration-200 outline-none cursor-pointer"
           >
             <option value="all">All statuses</option>
             {Object.entries(STATUS_BADGES).map(([key, { label }]) => (
@@ -307,25 +307,49 @@ export default function ProspectsPage() {
                           <span className="text-sm text-[var(--pp-text-secondary)]">{p.total_opens}</span>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex items-center gap-1">
-                            <Link
-                              href={`/prospects/${p.id}`}
-                              className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--pp-bg-surface2)] text-[var(--pp-text-muted)] hover:text-[var(--pp-accent1)] transition-colors cursor-pointer"
-                              title="View Details"
+                          <div className="flex items-center gap-1.5">
+                            <motion.div
+                              whileHover={{ scale: 1.15 }}
+                              whileTap={{ scale: 0.9 }}
+                              transition={{ type: "spring", stiffness: 450, damping: 17 }}
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                            </Link>
-                            <button
-                              onClick={() => setAiTarget(p)}
-                              className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--pp-accent1)]/10 text-[var(--pp-text-muted)] hover:text-[var(--pp-accent1)] transition-colors cursor-pointer"
-                              title="AI Compose"
+                              <Link
+                                href={`/prospects/${p.id}`}
+                                className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--pp-bg-surface2)] text-[var(--pp-text-muted)] hover:text-[var(--pp-accent1-light)] transition-colors cursor-pointer"
+                                title="View Details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </Link>
+                            </motion.div>
+                            <motion.div
+                              whileHover={{ scale: 1.15 }}
+                              whileTap={{ scale: 0.9 }}
+                              transition={{ type: "spring", stiffness: 450, damping: 17 }}
                             >
-                              <Sparkles className="w-3.5 h-3.5" />
-                            </button>
+                              <button
+                                onClick={() => setAiTarget(p)}
+                                className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--pp-accent1)]/15 text-[var(--pp-text-muted)] hover:text-[var(--pp-accent1-light)] transition-colors cursor-pointer"
+                                title="AI Compose"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                              </button>
+                            </motion.div>
                             {p.linkedin_url && (
-                              <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer" className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--pp-bg-surface2)] text-[var(--pp-text-muted)] hover:text-[var(--pp-accent1)] transition-colors cursor-pointer">
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </a>
+                              <motion.div
+                                whileHover={{ scale: 1.15 }}
+                                whileTap={{ scale: 0.9 }}
+                                transition={{ type: "spring", stiffness: 450, damping: 17 }}
+                              >
+                                <a
+                                  href={p.linkedin_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--pp-bg-surface2)] text-[var(--pp-text-muted)] hover:text-[var(--pp-accent1-light)] transition-colors cursor-pointer"
+                                  title="LinkedIn"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              </motion.div>
                             )}
                           </div>
                         </td>

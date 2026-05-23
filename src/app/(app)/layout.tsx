@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppHeader } from "@/components/app-header";
+import { CommandPalette } from "@/components/command-palette";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -47,6 +48,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      <CommandPalette />
     </div>
   );
 }
