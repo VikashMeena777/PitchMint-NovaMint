@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AddProspectModal } from "@/components/add-prospect-modal";
 import { CsvImportModal } from "@/components/csv-import-modal";
 import { BulkActionsToolbar } from "@/components/bulk-actions-toolbar";
@@ -191,9 +192,29 @@ export default function ProspectsPage() {
         className="bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] rounded-2xl overflow-hidden"
       >
         {isLoading ? (
-          <div className="p-16 text-center">
-            <div className="w-8 h-8 border-2 border-[var(--pp-accent1)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm text-[var(--pp-text-muted)]">Loading prospects...</p>
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-4 border-b border-[var(--pp-border-subtle)] pb-4">
+              <Skeleton className="h-4 w-4 bg-zinc-800" />
+              <Skeleton className="h-4 w-32 bg-zinc-800" />
+              <Skeleton className="h-4 w-24 bg-zinc-800 ml-auto hidden md:block" />
+              <Skeleton className="h-4 w-16 bg-zinc-800" />
+              <Skeleton className="h-4 w-12 bg-zinc-800" />
+            </div>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-4 py-3 border-b border-[var(--pp-border-subtle)]/50 last:border-b-0">
+                <Skeleton className="h-4 w-4 bg-zinc-800" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-4 w-40 bg-zinc-800" />
+                  <Skeleton className="h-3 w-48 bg-zinc-800" />
+                </div>
+                <Skeleton className="h-4 w-28 bg-zinc-800 hidden md:block" />
+                <Skeleton className="h-5 w-20 bg-zinc-800 rounded-full" />
+                <div className="flex items-center gap-2 ml-auto">
+                  <Skeleton className="h-6 w-6 bg-zinc-800 rounded" />
+                  <Skeleton className="h-6 w-6 bg-zinc-800 rounded" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : prospects.length === 0 ? (
           <div className="p-16 text-center">

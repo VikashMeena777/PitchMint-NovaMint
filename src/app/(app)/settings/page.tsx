@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getUserProfile, updateUserProfile } from "@/lib/actions/user";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -270,8 +271,29 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-2 border-[var(--pp-accent1)] border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-6 max-w-3xl animate-pulse">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <Skeleton className="h-8 w-32 bg-zinc-800" />
+            <Skeleton className="h-4 w-64 bg-zinc-800 mt-2" />
+          </div>
+        </div>
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] rounded-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3 border-b border-[var(--pp-border-subtle)] pb-4">
+              <Skeleton className="h-8 w-8 rounded-lg bg-zinc-800" />
+              <Skeleton className="h-5 w-40 bg-zinc-800" />
+            </div>
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-20 bg-zinc-800" />
+              <Skeleton className="h-10 w-full bg-zinc-800 rounded-lg" />
+            </div>
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-32 bg-zinc-800" />
+              <Skeleton className="h-10 w-full bg-zinc-800 rounded-lg" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

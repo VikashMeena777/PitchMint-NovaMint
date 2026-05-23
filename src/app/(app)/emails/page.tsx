@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getEmails } from "@/lib/actions/sequences";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -153,9 +154,22 @@ export default function EmailsPage() {
         className="bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] rounded-2xl overflow-hidden"
       >
         {isLoading ? (
-          <div className="p-12 text-center">
-            <div className="w-8 h-8 border-2 border-[var(--pp-accent1)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm text-[var(--pp-text-muted)]">Loading emails...</p>
+          <div className="p-6 space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-4 py-4 border-b border-[var(--pp-border-subtle)]/50 last:border-b-0">
+                <Skeleton className="w-8 h-8 rounded-lg bg-zinc-800 flex-shrink-0" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/3 bg-zinc-800" />
+                  <Skeleton className="h-3 w-1/4 bg-zinc-800" />
+                </div>
+                <div className="hidden sm:flex items-center gap-4">
+                  <Skeleton className="h-4 w-8 bg-zinc-800" />
+                  <Skeleton className="h-4 w-8 bg-zinc-800" />
+                </div>
+                <Skeleton className="h-5 w-16 bg-zinc-800 rounded-full flex-shrink-0" />
+                <Skeleton className="h-4 w-14 bg-zinc-800 flex-shrink-0 hidden lg:block" />
+              </div>
+            ))}
           </div>
         ) : emails.length === 0 ? (
           <div className="p-16 text-center">
