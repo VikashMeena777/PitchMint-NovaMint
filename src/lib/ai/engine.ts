@@ -1,4 +1,5 @@
 import Groq from "groq-sdk";
+import { cleanEmailReply } from "@/lib/utils/email-cleaner";
 
 // ============================================
 // AI PROVIDER MANAGEMENT (Groq primary → Nvidia NIM fallback)
@@ -371,6 +372,9 @@ export async function categorizeReply(params: {
   originalBody: string;
   prospectName: string;
 }): Promise<ReplyCategorization | null> {
+  const cleanBody = cleanEmailReply(params.replyBody);
+  console.log(`[AI] Categorizing cleaned reply: "${cleanBody}"`);
+
   const prompt = `You are an expert at analyzing cold email replies. Categorize the following reply into one of these categories:
 
 1. "interested" - The person shows genuine interest, wants to learn more, or asks for a call/meeting.
@@ -386,7 +390,7 @@ export async function categorizeReply(params: {
 **Prospect name:** ${params.prospectName}
 
 **Reply:**
-${params.replyBody}
+${cleanBody}
 
 Respond in this EXACT JSON format:
 {

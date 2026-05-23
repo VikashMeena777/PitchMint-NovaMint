@@ -79,11 +79,14 @@ export async function POST(request: NextRequest) {
       }
 
       // Update email with categorization
+      const sentiment = categorization.category === "interested" ? "positive" :
+                        ["not_interested", "unsubscribe"].includes(categorization.category) ? "negative" : "neutral";
+
       const { error: updateErr } = await supabase
         .from("emails")
         .update({
           reply_category: categorization.category,
-          reply_sentiment: categorization.confidence > 0.7 ? "positive" : "neutral",
+          reply_sentiment: sentiment,
         })
         .eq("id", email.id);
 
