@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { cleanEmailReply } from "@/lib/utils/email-cleaner";
 import {
   updateProspectNotes,
   updateProspectTags,
@@ -790,8 +791,8 @@ export default function ProspectDetailPage() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-zinc-300 bg-zinc-800/50 rounded-md px-3 py-2 line-clamp-4 leading-relaxed">
-                              {email.reply_body || "Reply detected — content will be fetched on next sync."}
+                            <p className="text-sm text-zinc-300 bg-zinc-800/50 rounded-md px-3 py-2 line-clamp-4 leading-relaxed whitespace-pre-line">
+                              {email.reply_body ? cleanEmailReply(email.reply_body) : "Reply detected — content will be fetched on next sync."}
                             </p>
                           </div>
                         )}
