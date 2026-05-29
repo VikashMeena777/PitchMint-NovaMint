@@ -41,10 +41,12 @@ export async function GET() {
     gmail_oauth_state: state,
   }).eq("id", user.id);
 
-  // Gmail OAuth scopes needed for sending
+  // Gmail OAuth scopes — Sensitive only (no Restricted scopes = no CASA assessment needed)
+  // gmail.send = Sensitive (send emails from user's Gmail)
+  // userinfo.email = Non-sensitive (identify connected account)
+  // NOTE: gmail.readonly was removed to avoid Restricted scope CASA requirement
   const scopes = [
     "https://www.googleapis.com/auth/gmail.send",
-    "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/userinfo.email",
   ];
 

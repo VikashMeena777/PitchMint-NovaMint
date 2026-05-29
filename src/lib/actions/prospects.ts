@@ -312,3 +312,71 @@ export async function importProspectsFromCsv(rows: CsvRow[], columnMapping: Reco
 
   return { success: true, successCount, failCount, errors, uploadId: upload.id };
 }
+
+/**
+ * Mark a prospect as having replied, and update the most recent email record.
+ * This is the manual alternative to Gmail API reply detection
+ * (since gmail.readonly scope was removed to avoid CASA assessment).
+ */
+export async function markProspectAsReplied(
+  prospectId: string,
+  replyNote?: string
+) {
+  const supabase = await createClient();
+  if (!supabase) return { error: "Supabase not configured" };
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const now = new Date().toISOString();
+
+  // Update prospect status
+  const { error: prospectError } = await supabase
+    .from("prospects")
+    .update({
+      status: "replied",
+      last_replied_at: now,
+      updated_at: now,
+    })
+    .eq("id", prospectId)
+    .eq("user_id", user.id);
+
+  if (prospectError) return { error: prospectError.message };
+
+  // Update the most recent sent email for this prospect
+  const { data: latestEmail } = await supabase
+    .from("emails")
+    .select("id")
+    .eq("prospect_id", prospectId)
+    .eq("user_id", user.id)
+    .eq("status", "sent")
+    .order("sent_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (latestEmail) {
+    await supabase
+      .from("emails")
+      .update({
+        has_reply: true,
+        reply_received_at: now,
+        reply_body: replyNote || "(Manually marked as replied by user)",
+        reply_category: null, // Will be categorized by process-replies cron
+      })
+      .eq("id", latestEmail.id);
+  }
+
+  revalidatePath(`/prospects/${prospectId}`);
+  revalidatePath("/prospects");
+
+  // Activity logging (fire-and-forget)
+  logActivity({
+    user_id: user.id,
+    action: "prospect.marked_replied",
+    resource_type: "prospect",
+    resource_id: prospectId,
+    metadata: { manual: true, note: replyNote || null },
+  });
+
+  return { success: true };
+}

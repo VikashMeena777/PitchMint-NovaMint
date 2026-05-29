@@ -60,12 +60,22 @@ export async function POST(request: NextRequest) {
         .filter(Boolean)
         .join(" ") || "Unknown";
 
-      // Categorize reply using AI
+      // Categorize reply using AI (supports both reply body and engagement signals)
+      const sentTime = email.sent_at ? new Date(email.sent_at as string).getTime() : 0;
+      const openedTime = email.first_opened_at ? new Date(email.first_opened_at as string).getTime() : 0;
+      const hoursToFirstOpen = sentTime && openedTime ? (openedTime - sentTime) / (1000 * 60 * 60) : undefined;
+
       const categorization = await categorizeReply({
         replyBody: email.reply_body || "",
         originalSubject: email.subject || "",
         originalBody: email.body_text || email.body_html || "",
         prospectName,
+        engagementSignals: {
+          openCount: (email as Record<string, unknown>).open_count as number | undefined,
+          clickCount: (email as Record<string, unknown>).click_count as number | undefined,
+          hoursToFirstOpen,
+          manualReply: email.has_reply || false,
+        },
       });
 
       if (!categorization) {

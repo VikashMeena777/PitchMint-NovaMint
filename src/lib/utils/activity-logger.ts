@@ -16,6 +16,8 @@ export type ActivityAction =
   | "prospect.deleted"
   | "prospect.enriched"
   | "prospect.imported"
+  | "prospect.marked_replied"
+  | "prospect.status_changed"
   | "sequence.created"
   | "sequence.updated"
   | "sequence.activated"

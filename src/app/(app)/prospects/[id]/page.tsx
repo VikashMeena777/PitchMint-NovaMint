@@ -15,6 +15,8 @@ import { cleanEmailReply } from "@/lib/utils/email-cleaner";
 import {
   updateProspectNotes,
   updateProspectTags,
+  markProspectAsReplied,
+  updateProspectStatus,
 } from "@/lib/actions/prospects";
 import {
   ArrowLeft,
@@ -468,6 +470,89 @@ export default function ProspectDetailPage() {
                   )}
                 </div>
               </div>
+
+              {/* Quick Status Actions */}
+              <div className="pt-2 border-t border-zinc-800">
+                <p className="text-xs text-zinc-500 mb-2">Quick Actions</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {prospect.status !== "replied" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7 bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20"
+                      onClick={async () => {
+                        const result = await markProspectAsReplied(prospect.id);
+                        if (result.error) {
+                          toast.error(result.error);
+                        } else {
+                          setProspect({ ...prospect, status: "replied" });
+                          toast.success("Marked as replied");
+                        }
+                      }}
+                    >
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      Replied
+                    </Button>
+                  )}
+                  {prospect.status !== "interested" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7 bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
+                      onClick={async () => {
+                        const result = await updateProspectStatus(prospect.id, "interested");
+                        if (result.error) {
+                          toast.error(result.error);
+                        } else {
+                          setProspect({ ...prospect, status: "interested" });
+                          toast.success("Marked as interested");
+                        }
+                      }}
+                    >
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Interested
+                    </Button>
+                  )}
+                  {prospect.status !== "not_interested" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7 bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20"
+                      onClick={async () => {
+                        const result = await updateProspectStatus(prospect.id, "not_interested");
+                        if (result.error) {
+                          toast.error(result.error);
+                        } else {
+                          setProspect({ ...prospect, status: "not_interested" });
+                          toast.success("Marked as not interested");
+                        }
+                      }}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Not Interested
+                    </Button>
+                  )}
+                  {prospect.status !== "meeting_booked" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7 bg-violet-500/10 border-violet-500/20 text-violet-400 hover:bg-violet-500/20"
+                      onClick={async () => {
+                        const result = await updateProspectStatus(prospect.id, "meeting_booked");
+                        if (result.error) {
+                          toast.error(result.error);
+                        } else {
+                          setProspect({ ...prospect, status: "meeting_booked" });
+                          toast.success("Meeting booked!");
+                        }
+                      }}
+                    >
+                      <Zap className="h-3 w-3 mr-1" />
+                      Meeting
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </SpotlightCard>
 
@@ -775,12 +860,12 @@ export default function ProspectDetailPage() {
                           </div>
                         </div>
 
-                        {/* Reply Content Preview — uses gmail.readonly scope */}
+                        {/* Reply / Engagement Info */}
                         {email.has_reply && (
                           <div className="mt-3 pt-3 border-t border-zinc-800">
                             <div className="flex items-center gap-2 mb-1.5">
                               <MessageSquare className="h-3.5 w-3.5 text-green-400" />
-                              <span className="text-xs font-medium text-green-400">Reply from prospect</span>
+                              <span className="text-xs font-medium text-green-400">Reply detected</span>
                               {email.reply_category && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-300 border border-green-500/20">
                                   {email.reply_category}
@@ -792,9 +877,32 @@ export default function ProspectDetailPage() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-zinc-300 bg-zinc-800/50 rounded-md px-3 py-2 line-clamp-4 leading-relaxed whitespace-pre-line">
-                              {email.reply_body ? cleanEmailReply(email.reply_body) : "Reply detected — content will be fetched on next sync."}
-                            </p>
+                            {email.reply_body && (
+                              <p className="text-sm text-zinc-300 bg-zinc-800/50 rounded-md px-3 py-2 line-clamp-4 leading-relaxed whitespace-pre-line">
+                                {email.reply_body.startsWith("[Engagement Score:")
+                                  ? email.reply_body
+                                  : cleanEmailReply(email.reply_body)}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {/* Engagement metrics */}
+                        {!email.has_reply && (email.open_count > 0 || email.click_count > 0) && (
+                          <div className="mt-3 pt-3 border-t border-zinc-800">
+                            <div className="flex items-center gap-3 text-xs text-zinc-400">
+                              {email.open_count > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Eye className="h-3 w-3 text-amber-400" />
+                                  {email.open_count} open{email.open_count > 1 ? "s" : ""}
+                                </span>
+                              )}
+                              {email.click_count > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <MousePointer className="h-3 w-3 text-cyan-400" />
+                                  {email.click_count} click{email.click_count > 1 ? "s" : ""}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         )}
                       </CardContent>

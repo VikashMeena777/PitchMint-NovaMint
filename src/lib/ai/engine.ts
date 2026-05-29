@@ -371,11 +371,24 @@ export async function categorizeReply(params: {
   originalSubject: string;
   originalBody: string;
   prospectName: string;
+  engagementSignals?: {
+    openCount?: number;
+    clickCount?: number;
+    hoursToFirstOpen?: number;
+    engagementScore?: number;
+    manualReply?: boolean;
+  };
 }): Promise<ReplyCategorization | null> {
-  const cleanBody = cleanEmailReply(params.replyBody);
-  console.log(`[AI] Categorizing cleaned reply: "${cleanBody}"`);
+  // If we have a real reply body, use it for AI categorization
+  const hasRealBody = params.replyBody &&
+    !params.replyBody.startsWith("[Engagement Score:") &&
+    params.replyBody !== "(Reply detected but content unavailable)";
 
-  const prompt = `You are an expert at analyzing cold email replies. Categorize the following reply into one of these categories:
+  if (hasRealBody) {
+    const cleanBody = cleanEmailReply(params.replyBody);
+    console.log(`[AI] Categorizing cleaned reply: "${cleanBody}"`);
+
+    const prompt = `You are an expert at analyzing cold email replies. Categorize the following reply into one of these categories:
 
 1. "interested" - The person shows genuine interest, wants to learn more, or asks for a call/meeting.
 2. "not_interested" - The person explicitly declines, says no, or indicates they don't need the service.
@@ -401,19 +414,82 @@ Respond in this EXACT JSON format:
   "should_stop_sequence": true or false
 }`;
 
-  try {
-    const content = await callAI(prompt, {
-      temperature: 0.2,
-      maxTokens: 500,
-      systemPrompt:
-        "You are an email reply analyst. Be precise and accurate in categorization. When in doubt, lean towards the most protective category.",
-    });
-    if (!content) return null;
-    return JSON.parse(content) as ReplyCategorization;
-  } catch (error) {
-    console.error("[AI] Reply categorization error:", error);
-    return null;
+    try {
+      const content = await callAI(prompt, {
+        temperature: 0.2,
+        maxTokens: 500,
+        systemPrompt:
+          "You are an email reply analyst. Be precise and accurate in categorization. When in doubt, lean towards the most protective category.",
+      });
+      if (!content) return null;
+      return JSON.parse(content) as ReplyCategorization;
+    } catch (error) {
+      console.error("[AI] Reply categorization error:", error);
+      return null;
+    }
   }
+
+  // Engagement-based categorization (no reply body available)
+  const signals = params.engagementSignals;
+  if (signals) {
+    console.log(`[AI] Categorizing by engagement signals: score=${signals.engagementScore}, opens=${signals.openCount}, clicks=${signals.clickCount}`);
+
+    // Manual reply flag takes highest priority
+    if (signals.manualReply) {
+      return {
+        category: "interested",
+        confidence: 0.9,
+        reasoning: "User manually confirmed this prospect replied",
+        suggested_action: "Follow up with a personalized response",
+        should_stop_sequence: true,
+      };
+    }
+
+    // High engagement: clicks + multiple opens
+    if ((signals.clickCount || 0) >= 2 && (signals.openCount || 0) >= 3) {
+      return {
+        category: "interested",
+        confidence: 0.75,
+        reasoning: `High engagement detected: ${signals.openCount} opens, ${signals.clickCount} clicks. Prospect is actively reviewing your content.`,
+        suggested_action: "Send a follow-up referencing what they clicked on",
+        should_stop_sequence: false,
+      };
+    }
+
+    // Moderate engagement: at least one click
+    if ((signals.clickCount || 0) >= 1) {
+      return {
+        category: "interested",
+        confidence: 0.6,
+        reasoning: `Prospect clicked ${signals.clickCount} link(s) in your email, indicating active interest.`,
+        suggested_action: "Send a follow-up highlighting the value proposition they engaged with",
+        should_stop_sequence: false,
+      };
+    }
+
+    // Warm: multiple opens but no clicks
+    if ((signals.openCount || 0) >= 3) {
+      return {
+        category: "ask_later",
+        confidence: 0.5,
+        reasoning: `Prospect opened your email ${signals.openCount} times but hasn't clicked. They may be considering it.`,
+        suggested_action: "Send a value-focused follow-up with a clearer CTA",
+        should_stop_sequence: false,
+      };
+    }
+
+    // Baseline engagement
+    return {
+      category: "unknown",
+      confidence: 0.3,
+      reasoning: `Some engagement detected (${signals.openCount || 0} opens, ${signals.clickCount || 0} clicks) but not enough to determine interest level.`,
+      suggested_action: "Continue the sequence and monitor engagement",
+      should_stop_sequence: false,
+    };
+  }
+
+  // No reply body and no engagement signals — can't categorize
+  return null;
 }
 
 // ============================================
