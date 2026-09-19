@@ -58,7 +58,7 @@ export function getNextSendTime(
   }
 
   // Find next valid window
-  let targetDate = new Date(tzNow);
+  const targetDate = new Date(tzNow);
 
   // If past today's window, start from tomorrow
   if (hour >= cfg.send_window.end_hour) {
@@ -202,11 +202,12 @@ function getTimeInTimezone(date: Date, timezone: string): Date {
  * Get recommended send times for a prospect's timezone
  * Based on industry research for cold email engagement
  */
-export function getOptimalSendTimes(timezone: string): {
+export function getOptimalSendTimes(_timezone?: string): {
   best: string[];
   good: string[];
   avoid: string[];
 } {
+  void _timezone;
   return {
     best: [
       "Tuesday 10:00 AM",

@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { PLANS, type PlanId, type PlanDetails } from "@/lib/billing/plans";
+import { UsageMeters } from "@/components/billing/usage-meters";
 import {
   CreditCard,
   Check,
@@ -89,11 +90,6 @@ function BillingPageContent() {
     }
   }
 
-  // Fetch current subscription
-  useEffect(() => {
-    fetchSubscription();
-  }, []);
-
   const fetchSubscription = useCallback(async () => {
     try {
       const res = await fetch("/api/billing/manage");
@@ -109,6 +105,11 @@ function BillingPageContent() {
       setIsLoading(false);
     }
   }, []);
+
+  // Fetch current subscription
+  useEffect(() => {
+    fetchSubscription();
+  }, [fetchSubscription]);
 
   async function handleUpgrade(planId: PlanId) {
     if (planId === "free" || planId === currentPlan) return;
@@ -302,6 +303,11 @@ function BillingPageContent() {
                     Valid until {new Date(expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
                   </p>
                 )}
+                {subscriptionId && (
+                  <p className="text-[10px] text-[var(--pp-text-muted)] mt-0.5 font-mono">
+                    Ref: {subscriptionId}
+                  </p>
+                )}
               </div>
             </div>
             {currentPlan !== "free" && (
@@ -320,6 +326,15 @@ function BillingPageContent() {
           {/* Decorative gradient orb */}
           <div className="absolute -top-12 -right-12 w-40 h-40 bg-[var(--pp-accent1)]/5 rounded-full blur-3xl pointer-events-none" />
         </motion.div>
+
+        {/* Plan Quotas & Usage Meters */}
+        <UsageMeters
+          currentPlan={currentPlan}
+          onUpgradeClick={() => {
+            const nextPlanId = currentPlan === "free" ? "starter" : currentPlan === "starter" ? "growth" : "agency";
+            handleUpgrade(nextPlanId);
+          }}
+        />
 
         {/* Plan Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">

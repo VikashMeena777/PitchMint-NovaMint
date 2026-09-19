@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isSafeRedirectUrl } from "@/lib/security/redirect";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const emailId = searchParams.get("eid");
   const targetUrl = searchParams.get("url");
 
-  if (!targetUrl) {
+  if (!targetUrl || !isSafeRedirectUrl(targetUrl)) {
+    console.warn("[Tracking] Blocked untrusted or unsafe redirect URL:", targetUrl);
     return NextResponse.redirect(new URL("/", request.url));
   }
 
@@ -17,8 +19,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Redirect to the actual URL
-  return NextResponse.redirect(targetUrl);
+  // Safely redirect to verified destination URL
+  try {
+    return NextResponse.redirect(new URL(targetUrl, request.url));
+  } catch {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
 }
 
 async function recordClick(emailId: string) {

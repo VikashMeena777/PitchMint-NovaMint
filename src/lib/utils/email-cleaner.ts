@@ -6,7 +6,7 @@ export function cleanEmailReply(body: string | null): string {
   if (!body) return "";
 
   // Normalize line endings
-  let text = body.replace(/\r\n/g, "\n");
+  const text = body.replace(/\r\n/g, "\n");
 
   // Patterns that usually mark the beginning of quoted text or email threads
   const quoteIndicators = [

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -96,22 +96,27 @@ export function useLocalStorage<T>(
 }
 
 /**
- * Hook to detect if a media query matches.
+ * Hook to detect if a media query matches (SSR-safe via useSyncExternalStore).
  */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
+  const subscribe = useCallback(
+    (callback: () => void) => {
+      if (typeof window === "undefined") return () => {};
+      const media = window.matchMedia(query);
+      media.addEventListener("change", callback);
+      return () => media.removeEventListener("change", callback);
+    },
+    [query]
+  );
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const media = window.matchMedia(query);
-    setMatches(media.matches);
-
-    const listener = (e: MediaQueryListEvent) => setMatches(e.matches);
-    media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
+  const getSnapshot = useCallback(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(query).matches;
   }, [query]);
 
-  return matches;
+  const getServerSnapshot = useCallback(() => false, []);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 /**

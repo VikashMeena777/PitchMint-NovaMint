@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 
 /**
@@ -191,15 +191,32 @@ export async function POST(request: NextRequest) {
   });
 }
 
+interface CronEmailPayload {
+  id: string;
+  user_id: string;
+  to_email: string;
+  from_email?: string;
+  from_name?: string;
+  subject: string;
+  body_text?: string;
+  body_html?: string;
+  users?: {
+    sending_name?: string;
+  };
+}
+
+interface UserProfileRow {
+  company_name?: string | null;
+  mailing_address?: string | null;
+}
+
 /**
  * Resend fallback for cron sends
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendViaResendCron(
-  email: any,
+  email: CronEmailPayload,
   resendApiKey: string | undefined,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
+  supabase: SupabaseClient,
 ) {
   if (!resendApiKey) {
     return { success: false, error: "No email provider configured (RESEND_API_KEY missing)" };
@@ -218,6 +235,7 @@ async function sendViaResendCron(
     .single();
 
   const { sendEmail: sendPremiumEmail } = await import("@/lib/email/sender");
+  const typedProfile = userProfile as UserProfileRow | null;
 
   return sendPremiumEmail({
     to: email.to_email,
@@ -226,8 +244,8 @@ async function sendViaResendCron(
     subject: email.subject,
     body: email.body_text || "",
     bodyHtml: email.body_html || undefined,
-    companyName: (userProfile as any)?.company_name || "",
-    mailingAddress: (userProfile as any)?.mailing_address || "",
+    companyName: typedProfile?.company_name || "",
+    mailingAddress: typedProfile?.mailing_address || "",
     trackOpens: true,
     emailId: email.id,
   });

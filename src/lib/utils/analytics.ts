@@ -20,6 +20,21 @@ export type UserProperties = {
   [key: string]: unknown;
 };
 
+interface PostHogInstance {
+  capture?: (event: string, properties?: Record<string, unknown>) => void;
+  identify?: (userId: string, properties?: UserProperties) => void;
+  reset?: () => void;
+}
+
+interface WindowWithPostHog {
+  posthog?: PostHogInstance;
+}
+
+function getPostHog(): PostHogInstance | undefined {
+  if (typeof window === "undefined") return undefined;
+  return (window as unknown as WindowWithPostHog).posthog;
+}
+
 /**
  * Initialize analytics (call once on app mount)
  */
@@ -29,10 +44,10 @@ export function initAnalytics(): void {
   const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
 
-  if (posthogKey && !(window as any).posthog) {
+  if (posthogKey && !getPostHog()) {
     // PostHog auto-loads via script tag or npm package
     // This is a placeholder for the initialization
-    console.log("[Analytics] PostHog would initialize with key:", posthogKey.slice(0, 8) + "...");
+    console.log("[Analytics] PostHog would initialize with key:", posthogKey.slice(0, 8) + "...", "host:", posthogHost);
   }
 }
 
@@ -43,8 +58,9 @@ export function trackEvent(event: string, properties?: Record<string, unknown>):
   if (typeof window === "undefined") return;
 
   // PostHog
-  if ((window as any).posthog?.capture) {
-    (window as any).posthog.capture(event, properties);
+  const posthog = getPostHog();
+  if (posthog?.capture) {
+    posthog.capture(event, properties);
     return;
   }
 
@@ -60,8 +76,9 @@ export function trackEvent(event: string, properties?: Record<string, unknown>):
 export function identifyUser(userId: string, properties?: UserProperties): void {
   if (typeof window === "undefined") return;
 
-  if ((window as any).posthog?.identify) {
-    (window as any).posthog.identify(userId, properties);
+  const posthog = getPostHog();
+  if (posthog?.identify) {
+    posthog.identify(userId, properties);
     return;
   }
 
@@ -76,9 +93,9 @@ export function identifyUser(userId: string, properties?: UserProperties): void 
 export function resetAnalytics(): void {
   if (typeof window === "undefined") return;
 
-  if ((window as any).posthog?.reset) {
-    (window as any).posthog.reset();
-    return;
+  const posthog = getPostHog();
+  if (posthog?.reset) {
+    posthog.reset();
   }
 }
 
@@ -89,9 +106,10 @@ export function trackPageView(path?: string): void {
   if (typeof window === "undefined") return;
 
   const pagePath = path || window.location.pathname;
+  const posthog = getPostHog();
 
-  if ((window as any).posthog?.capture) {
-    (window as any).posthog.capture("$pageview", { $current_url: pagePath });
+  if (posthog?.capture) {
+    posthog.capture("$pageview", { $current_url: pagePath });
     return;
   }
 

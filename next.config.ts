@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Use webpack for builds to avoid Turbopack compatibility issues
-  // with server-side packages like cheerio
-  serverExternalPackages: ["cheerio", "crypto"],
+  turbopack: {
+    root: __dirname,
+  },
+  serverExternalPackages: ["cheerio"],
   allowedDevOrigins: ["192.168.29.99"],
 
   // Security headers for all routes

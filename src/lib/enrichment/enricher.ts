@@ -64,7 +64,7 @@ async function enrichViaProxycurl(linkedinUrl: string): Promise<EnrichmentResult
         last_name: profile.last_name as string,
         full_name: profile.full_name as string,
         job_title: profile.occupation as string,
-        company_name: (profile.experiences as any[])?.[0]?.company as string,
+        company_name: (profile.experiences as Array<{ company?: string }>)?.[0]?.company as string,
         linkedin_url: profile.public_identifier
           ? `https://linkedin.com/in/${profile.public_identifier}`
           : linkedinUrl,

@@ -12,24 +12,39 @@ interface AuroraBackgroundProps {
   intensity?: number;
 }
 
+// Deterministic pseudo-random generator for stable star placement (React 19 pure render & SSR safe)
+function getDeterministicValue(seed: number, offset: number) {
+  const x = Math.sin(seed * 12.9898 + offset * 78.233) * 43758.5453;
+  return x - Math.floor(x);
+}
+
 export function AuroraBackground({
   className = "",
   children,
   starCount = 30,
   intensity = 1,
 }: AuroraBackgroundProps) {
-  // Pre-generate star positions so they don't re-render
+  // Pre-generate star positions deterministically so they don't violate React 19 purity
   const stars = useMemo(
     () =>
-      Array.from({ length: starCount }, (_, i) => ({
-        id: i,
-        x: `${Math.random() * 100}%`,
-        y: `${Math.random() * 100}%`,
-        size: Math.random() * 2 + 1,
-        delay: Math.random() * 6,
-        duration: Math.random() * 3 + 2,
-        maxOpacity: Math.random() * 0.6 + 0.2,
-      })),
+      Array.from({ length: starCount }, (_, i) => {
+        const p1 = getDeterministicValue(i, 1.1);
+        const p2 = getDeterministicValue(i, 2.2);
+        const p3 = getDeterministicValue(i, 3.3);
+        const p4 = getDeterministicValue(i, 4.4);
+        const p5 = getDeterministicValue(i, 5.5);
+        const p6 = getDeterministicValue(i, 6.6);
+
+        return {
+          id: i,
+          x: `${(p1 * 100).toFixed(2)}%`,
+          y: `${(p2 * 100).toFixed(2)}%`,
+          size: Number((p3 * 2 + 1).toFixed(2)),
+          delay: Number((p4 * 6).toFixed(2)),
+          duration: Number((p5 * 3 + 2).toFixed(2)),
+          maxOpacity: Number((p6 * 0.6 + 0.2).toFixed(2)),
+        };
+      }),
     [starCount]
   );
 

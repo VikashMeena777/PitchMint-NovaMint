@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { verifyUnsubscribeToken } from "@/lib/security/hmac";
 
 /**
  * GET /api/emails/unsubscribe
@@ -13,10 +14,22 @@ export async function GET(request: NextRequest) {
   const userId = searchParams.get("u");
   const token = searchParams.get("token");
 
-  if (!prospectId || !userId) {
+  if (!prospectId || !userId || !token) {
     return new NextResponse(unsubscribePage("Invalid unsubscribe link."), {
       headers: { "Content-Type": "text/html" },
+      status: 400,
     });
+  }
+
+  // Validate HMAC signature to prevent forged unsubscribes
+  if (!verifyUnsubscribeToken(token, prospectId, userId)) {
+    return new NextResponse(
+      unsubscribePage("Invalid or expired unsubscribe token."),
+      {
+        headers: { "Content-Type": "text/html" },
+        status: 403,
+      }
+    );
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,17 +38,18 @@ export async function GET(request: NextRequest) {
   if (!supabaseUrl || !supabaseKey) {
     return new NextResponse(unsubscribePage("Server error. Contact support."), {
       headers: { "Content-Type": "text/html" },
+      status: 500,
     });
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
-    // Update prospect status to opted_out
+    // Update prospect status to valid database enum 'unsubscribed'
     const { error: updateError } = await supabase
       .from("prospects")
       .update({
-        status: "opted_out",
+        status: "unsubscribed",
         updated_at: new Date().toISOString(),
         notes: `Unsubscribed on ${new Date().toISOString().split("T")[0]}`,
       })
@@ -43,7 +57,7 @@ export async function GET(request: NextRequest) {
       .eq("user_id", userId);
 
     if (updateError) {
-      console.error("[Unsubscribe] Error:", updateError);
+      console.error("[Unsubscribe] Error updating prospect:", updateError);
     }
 
     // Stop all active sequence enrollments for this prospect
@@ -57,13 +71,13 @@ export async function GET(request: NextRequest) {
       .eq("prospect_id", prospectId)
       .eq("status", "active");
 
-    // Log the unsubscribe
+    // Log the unsubscribe activity
     await supabase.from("activity_log").insert({
       user_id: userId,
       action: "prospect.updated",
       resource_type: "prospect",
       resource_id: prospectId,
-      metadata: { change: "opted_out", source: "unsubscribe_link" },
+      metadata: { change: "unsubscribed", source: "unsubscribe_link" },
     });
 
     return new NextResponse(
@@ -74,7 +88,7 @@ export async function GET(request: NextRequest) {
     console.error("[Unsubscribe] Error:", err);
     return new NextResponse(
       unsubscribePage("Something went wrong. Please try again or contact support."),
-      { headers: { "Content-Type": "text/html" } }
+      { headers: { "Content-Type": "text/html" }, status: 500 }
     );
   }
 }

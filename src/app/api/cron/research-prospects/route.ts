@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     .from("prospects")
     .select("*, users(company_name, value_proposition, target_audience)")
     .is("research_data", null)
-    .in("research_status", ["pending", null] as any)
+    .in("research_status", ["pending", null] as unknown as string[])
     .eq("status", "new")
     .order("created_at", { ascending: true })
     .limit(5);

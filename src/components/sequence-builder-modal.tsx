@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,20 +45,34 @@ export function SequenceBuilderModal({ isOpen, onClose, sequenceId, sequenceName
   const [newDelay, setNewDelay] = useState(1);
   const [showAddForm, setShowAddForm] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadSteps();
-    }
-  }, [isOpen, sequenceId]);
-
-  const loadSteps = async () => {
+  const loadSteps = useCallback(async () => {
     setIsLoading(true);
     const result = await getSequenceById(sequenceId);
     if (result.data) {
       setSteps((result.data.sequence_steps || []) as Step[]);
     }
     setIsLoading(false);
-  };
+  }, [sequenceId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let ignore = false;
+    void (async () => {
+      await Promise.resolve();
+      if (ignore) return;
+      setIsLoading(true);
+      const result = await getSequenceById(sequenceId);
+      if (!ignore) {
+        if (result.data) {
+          setSteps((result.data.sequence_steps || []) as Step[]);
+        }
+        setIsLoading(false);
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [isOpen, sequenceId]);
 
   const handleAddStep = async () => {
     if (!newSubject.trim() || !newBody.trim()) return;

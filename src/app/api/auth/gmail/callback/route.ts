@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeEncrypt } from "@/lib/utils/encryption";
 
 /**
  * GET /api/auth/gmail/callback
@@ -101,12 +102,17 @@ export async function GET(request: NextRequest) {
     const userInfo = await userInfoResponse.json() as { email?: string };
     const gmailAddress = userInfo.email || user.email;
 
-    // Store tokens securely (encrypted in production)
+    // SEC-04: Encrypt tokens using AES-256-GCM before saving to database
+    const encryptedAccessToken = safeEncrypt(tokenData.access_token);
+    const encryptedRefreshToken = tokenData.refresh_token
+      ? safeEncrypt(tokenData.refresh_token)
+      : null;
+
     await supabase.from("users").update({
       gmail_connected: true,
       gmail_email: gmailAddress,
-      gmail_access_token: tokenData.access_token,
-      gmail_refresh_token: tokenData.refresh_token || null,
+      gmail_access_token: encryptedAccessToken,
+      gmail_refresh_token: encryptedRefreshToken,
       gmail_token_expires_at: tokenData.expires_in
         ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
         : null,

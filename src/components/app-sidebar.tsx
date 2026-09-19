@@ -9,17 +9,19 @@ import { createClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
   Users,
-  Zap,
-  BarChart3,
-  Settings,
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Send,
-  Sparkles,
   CreditCard,
   FileText,
+  Settings,
 } from "lucide-react";
+import {
+  AnimatedZap,
+  AnimatedMail,
+  AnimatedChart,
+  AnimatedSparkles,
+} from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -27,70 +29,79 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const navItems = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "Prospects",
-    href: "/prospects",
-    icon: Users,
-  },
-  {
-    label: "Sequences",
-    href: "/sequences",
-    icon: Zap,
-  },
-  {
-    label: "Emails",
-    href: "/emails",
-    icon: Send,
-  },
-  {
-    label: "Templates",
-    href: "/templates",
-    icon: FileText,
-  },
-  {
-    label: "Analytics",
-    href: "/analytics",
-    icon: BarChart3,
-  },
-];
+export interface NavBadgeCounters {
+  prospects?: number;
+  sequences?: number;
+  emails?: number;
+}
 
-const bottomNavItems = [
-  {
-    label: "Billing",
-    href: "/billing",
-    icon: CreditCard,
-  },
-  {
-    label: "Settings",
-    href: "/settings",
-    icon: Settings,
-  },
-];
+export function getSidebarWidth(collapsed: boolean): number {
+  return collapsed ? 64 : 256;
+}
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  onNavigate?: () => void;
+  isMobileDrawer?: boolean;
+}
+
+export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sidebar-collapsed");
+      return saved === "true";
+    }
+    return false;
+  });
+
+  const [counters, setCounters] = useState<NavBadgeCounters>({
+    prospects: 0,
+    sequences: 0,
+    emails: 0,
+  });
 
   useEffect(() => {
-    setMounted(true);
-    const saved = localStorage.getItem("sidebar-collapsed");
-    if (saved !== null) {
-      setCollapsed(saved === "true");
-    }
+    // Fetch quick live counts from Supabase or dashboard stats
+    const supabase = createClient();
+    if (!supabase) return;
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+
+      // Prospects count
+      supabase
+        .from("prospects")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .then(({ count }) => {
+          if (count != null) {
+            setCounters((prev) => ({ ...prev, prospects: count }));
+          }
+        });
+
+      // Sequences count
+      supabase
+        .from("sequences")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .then(({ count }) => {
+          if (count != null) {
+            setCounters((prev) => ({ ...prev, sequences: count }));
+          }
+        });
+    });
   }, []);
 
   const toggleCollapsed = () => {
     const nextState = !collapsed;
     setCollapsed(nextState);
-    localStorage.setItem("sidebar-collapsed", String(nextState));
+    try {
+      localStorage.setItem("sidebar-collapsed", String(nextState));
+    } catch {
+      // Storage unavailable
+    }
   };
 
   async function handleLogout() {
@@ -98,280 +109,345 @@ export function AppSidebar() {
     if (supabase) {
       await supabase.auth.signOut();
     }
+    if (onNavigate) onNavigate();
     router.push("/login");
     router.refresh();
   }
 
+  const effectiveCollapsed = isMobileDrawer ? false : collapsed;
+  const currentWidth = isMobileDrawer ? 280 : getSidebarWidth(collapsed);
+
+  const mainNavItems = [
+    {
+      label: "Dashboard",
+      href: "/dashboard",
+      renderIcon: (active: boolean) => (
+        <LayoutDashboard className={`w-4 h-4 ${active ? "text-[var(--pp-accent1-light)]" : ""}`} />
+      ),
+    },
+    {
+      label: "Prospects",
+      href: "/prospects",
+      badge: counters.prospects && counters.prospects > 0 ? counters.prospects : undefined,
+      renderIcon: (active: boolean) => (
+        <Users className={`w-4 h-4 ${active ? "text-[var(--pp-accent1-light)]" : ""}`} />
+      ),
+    },
+    {
+      label: "Sequences",
+      href: "/sequences",
+      badge: counters.sequences && counters.sequences > 0 ? counters.sequences : undefined,
+      renderIcon: (active: boolean) => (
+        <AnimatedZap className="w-4 h-4" animated={active} />
+      ),
+    },
+    {
+      label: "Emails",
+      href: "/emails",
+      renderIcon: (active: boolean) => (
+        <AnimatedMail className="w-4 h-4" animated={active} />
+      ),
+    },
+    {
+      label: "Templates",
+      href: "/templates",
+      renderIcon: (active: boolean) => (
+        <FileText className={`w-4 h-4 ${active ? "text-[var(--pp-accent1-light)]" : ""}`} />
+      ),
+    },
+    {
+      label: "Analytics",
+      href: "/analytics",
+      renderIcon: (active: boolean) => (
+        <AnimatedChart className="w-4 h-4" animated={active} />
+      ),
+    },
+  ];
+
+  const bottomNavItems = [
+    {
+      label: "Billing",
+      href: "/billing",
+      icon: CreditCard,
+    },
+    {
+      label: "Settings",
+      href: "/settings",
+      icon: Settings,
+    },
+  ];
+
   return (
     <motion.aside
       initial={false}
-      animate={{ width: collapsed ? 72 : 240 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className="h-screen sticky top-0 flex flex-col border-r border-[var(--pp-border-subtle)] bg-[rgba(3,7,18,0.7)] backdrop-blur-xl z-40"
+      animate={{ width: currentWidth }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      className={`h-[100dvh] sticky top-0 flex flex-col border-r border-[var(--pp-border-subtle)] bg-[var(--pp-bg-surface)]/90 backdrop-blur-2xl z-40 select-none ${
+        isMobileDrawer ? "w-full max-w-[280px]" : ""
+      }`}
     >
-      {/* Logo */}
-      <div className="flex items-center h-16 border-b border-[var(--pp-border-subtle)] px-4">
-        <Link href="/" className="flex items-center gap-2.5 cursor-pointer group">
+      {/* Brand Header */}
+      <div className="flex items-center h-16 border-b border-[var(--pp-border-subtle)] px-4 flex-shrink-0">
+        <Link
+          href="/dashboard"
+          onClick={onNavigate}
+          className="flex items-center gap-3 cursor-pointer group w-full"
+        >
           <motion.div
-            whileHover={{ scale: 1.08, rotate: 3 }}
-            whileTap={{ scale: 0.93 }}
-            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex-shrink-0"
           >
             <Image
               src="/PitchMint Logo.jpg"
               alt="PitchMint"
-              width={36}
-              height={36}
-              className="rounded-xl flex-shrink-0 shadow-[0_0_15px_rgba(95,93,240,0.2)] border border-[var(--pp-border-default)] transition-all"
+              width={32}
+              height={32}
+              className="rounded-xl shadow-[0_0_12px_rgba(95,93,240,0.3)] border border-[var(--pp-border-default)] transition-all"
             />
           </motion.div>
           <AnimatePresence>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, x: -8 }}
+            {!effectiveCollapsed && (
+              <motion.div
+                initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                className="text-lg font-bold tracking-tight text-[var(--pp-text-primary)] whitespace-nowrap bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent"
-                style={{ fontFamily: "var(--font-display)" }}
+                exit={{ opacity: 0, x: -6 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-1.5 min-w-0"
               >
-                PitchMint
-              </motion.span>
+                <span
+                  className="text-base font-bold tracking-tight text-[var(--pp-text-primary)] whitespace-nowrap"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  PitchMint
+                </span>
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-[var(--pp-accent1)]/15 text-[var(--pp-accent1-light)] border border-[var(--pp-accent1)]/30 font-mono">
+                  PRO
+                </span>
+              </motion.div>
             )}
           </AnimatePresence>
         </Link>
       </div>
 
-      {/* AI Badge */}
-      <div className="px-3 mt-4 mb-2">
+      {/* AI Personalization Indicator */}
+      <div className="px-3 pt-3 pb-1 flex-shrink-0">
         <AnimatePresence>
-          {!collapsed ? (
+          {!effectiveCollapsed ? (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              whileHover={{ y: -1 }}
-              className="relative overflow-hidden rounded-xl p-3 bg-gradient-to-br from-[var(--pp-accent1)]/10 to-[var(--pp-accent2)]/5 border border-[var(--pp-border-accent)] shadow-[0_0_15px_rgba(95,93,240,0.05)]"
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="relative overflow-hidden rounded-xl p-2.5 bg-gradient-to-r from-[var(--pp-accent1)]/10 via-[var(--pp-accent2)]/10 to-transparent border border-[var(--pp-border-accent)]"
             >
-              <div className="flex items-center gap-2">
-                <div className="icon-container icon-container-sm bg-gradient-to-br from-[var(--pp-accent1)]/20 to-[var(--pp-accent2)]/10">
-                  <Sparkles className="w-3.5 h-3.5 text-[var(--pp-accent1-light)]" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AnimatedSparkles className="w-4 h-4 text-[var(--pp-accent1-light)] flex-shrink-0" animated />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-[var(--pp-accent1-light)] truncate">
+                      AI Engine Ready
+                    </p>
+                    <p className="text-[9px] text-[var(--pp-text-muted)] truncate">
+                      Personalization online
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-[var(--pp-accent1-light)]">AI Engine</p>
-                  <p className="text-[10px] text-[var(--pp-text-muted)]">Personalization active</p>
-                </div>
-              </div>
-              <div className="absolute top-2.5 right-2.5 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--pp-accent2-light)] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0 ml-1" />
               </div>
             </motion.div>
           ) : (
             <Tooltip>
               <TooltipTrigger>
-                <div className="icon-container icon-container-sm bg-gradient-to-br from-[var(--pp-accent1)]/15 to-[var(--pp-accent2)]/8 border border-[var(--pp-border-accent)] mx-auto cursor-default shadow-[0_0_10px_rgba(95,93,240,0.05)]">
-                  <Sparkles className="w-3.5 h-3.5 text-[var(--pp-accent1-light)]" />
+                <div className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center bg-[var(--pp-accent1)]/10 border border-[var(--pp-border-accent)] cursor-pointer">
+                  <AnimatedSparkles className="w-4 h-4 text-[var(--pp-accent1-light)]" animated />
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                AI Engine Active
+              <TooltipContent side="right" sideOffset={12}>
+                AI Engine Online
               </TooltipContent>
             </Tooltip>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Nav Items */}
+      {/* Navigation Links */}
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {mainNavItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-          const Icon = item.icon;
 
-          return collapsed ? (
-            <Tooltip key={item.href}>
-              <TooltipTrigger>
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                >
+          if (effectiveCollapsed) {
+            return (
+              <Tooltip key={item.href}>
+                <TooltipTrigger>
                   <Link
                     href={item.href}
+                    onClick={onNavigate}
                     className={`
-                      flex items-center justify-center w-10 h-10 mx-auto rounded-xl
+                      relative flex items-center justify-center w-10 h-10 mx-auto rounded-xl
                       transition-all duration-200 cursor-pointer
-                      ${isActive
-                        ? "bg-[var(--pp-accent1)]/20 text-white shadow-[0_0_15px_rgba(95,93,240,0.15)] border border-[rgba(95,93,240,0.3)]"
-                        : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]"
+                      ${
+                        isActive
+                          ? "bg-[var(--pp-accent1)]/20 text-white shadow-[0_0_12px_rgba(95,93,240,0.2)] border border-[var(--pp-accent1)]/30"
+                          : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]"
                       }
                     `}
                   >
-                    <Icon className="w-5 h-5" />
+                    {item.renderIcon(isActive)}
+                    {item.badge != null && (
+                      <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--pp-accent1)]" />
+                    )}
                   </Link>
-                </motion.div>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                {item.label}
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <motion.div
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={12}>
+                  {item.label} {item.badge != null ? `(${item.badge})` : ""}
+                </TooltipContent>
+              </Tooltip>
+            );
+          }
+
+          return (
+            <Link
               key={item.href}
-              whileHover={{ x: 3 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              href={item.href}
+              onClick={onNavigate}
+              className={`
+                group relative flex items-center justify-between px-3 py-2.5 rounded-xl
+                transition-all duration-200 cursor-pointer text-xs font-medium
+                ${
+                  isActive
+                    ? "bg-[var(--pp-accent1)]/15 text-[var(--pp-text-primary)] border border-[var(--pp-accent1)]/25 shadow-[0_0_15px_rgba(95,93,240,0.08)]"
+                    : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]/60"
+                }
+              `}
             >
-              <Link
-                href={item.href}
-                className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-xl
-                  transition-all duration-200 cursor-pointer group relative
-                  ${isActive
-                    ? "bg-[var(--pp-accent1)]/15 text-white shadow-[0_0_15px_rgba(95,93,240,0.1)] border border-[rgba(95,93,240,0.2)]"
-                    : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]/50"
-                  }
-                `}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm font-medium">{item.label}</span>
-                {isActive && (
-                  <motion.div
-                    layoutId="sidebar-active-pill"
-                    className="absolute left-0 w-[3px] h-6 rounded-r-full bg-[var(--pp-accent1)] shadow-[0_0_8px_rgba(95,93,240,0.8)]"
-                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                  />
-                )}
-              </Link>
-            </motion.div>
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="flex-shrink-0">{item.renderIcon(isActive)}</span>
+                <span className="truncate">{item.label}</span>
+              </div>
+
+              {item.badge != null && (
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-[var(--pp-bg-surface2)] text-[var(--pp-text-secondary)] border border-[var(--pp-border-subtle)] group-hover:border-[var(--pp-border-accent)] transition-colors">
+                  {item.badge}
+                </span>
+              )}
+
+              {isActive && (
+                <motion.div
+                  layoutId="sidebar-active-pill"
+                  className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[var(--pp-accent1)] shadow-[0_0_8px_rgba(95,93,240,0.8)]"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+            </Link>
           );
         })}
       </nav>
 
-      {/* Bottom section */}
-      <div className="px-3 pb-3 space-y-1 pt-3">
-        <div className="h-px bg-gradient-to-r from-transparent via-[var(--pp-border-strong)] to-transparent mb-3" />
-        
+      {/* Bottom section (Billing, Settings, Logout, Collapse toggle) */}
+      <div className="px-3 pb-3 pt-2 space-y-1 border-t border-[var(--pp-border-subtle)] flex-shrink-0 bg-[var(--pp-bg-surface)]/50">
         {bottomNavItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
 
-          return collapsed ? (
-            <Tooltip key={item.href}>
-              <TooltipTrigger>
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                >
+          if (effectiveCollapsed) {
+            return (
+              <Tooltip key={item.href}>
+                <TooltipTrigger>
                   <Link
                     href={item.href}
+                    onClick={onNavigate}
                     className={`
                       flex items-center justify-center w-10 h-10 mx-auto rounded-xl
                       transition-all duration-200 cursor-pointer
-                      ${isActive
-                        ? "bg-[var(--pp-accent1)]/20 text-white shadow-[0_0_15px_rgba(95,93,240,0.15)] border border-[rgba(95,93,240,0.3)]"
-                        : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]"
+                      ${
+                        isActive
+                          ? "bg-[var(--pp-accent1)]/20 text-white border border-[var(--pp-accent1)]/30"
+                          : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]"
                       }
                     `}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-4 h-4" />
                   </Link>
-                </motion.div>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                {item.label}
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <motion.div
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={12}>
+                  {item.label}
+                </TooltipContent>
+              </Tooltip>
+            );
+          }
+
+          return (
+            <Link
               key={item.href}
-              whileHover={{ x: 3 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              href={item.href}
+              onClick={onNavigate}
+              className={`
+                flex items-center gap-3 px-3 py-2 rounded-xl
+                transition-all duration-200 cursor-pointer text-xs font-medium
+                ${
+                  isActive
+                    ? "bg-[var(--pp-accent1)]/15 text-[var(--pp-text-primary)] border border-[var(--pp-accent1)]/25"
+                    : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]/60"
+                }
+              `}
             >
-              <Link
-                href={item.href}
-                className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-xl
-                  transition-all duration-200 cursor-pointer
-                  ${isActive
-                    ? "bg-[var(--pp-accent1)]/15 text-white shadow-[0_0_15px_rgba(95,93,240,0.1)] border border-[rgba(95,93,240,0.2)]"
-                    : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)]/50"
-                  }
-                `}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm font-medium">{item.label}</span>
-              </Link>
-            </motion.div>
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              <span>{item.label}</span>
+            </Link>
           );
         })}
 
-        {/* Logout */}
-        {collapsed ? (
+        {/* Sign Out */}
+        {effectiveCollapsed ? (
           <Tooltip>
             <TooltipTrigger>
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="w-10 h-10 mx-auto text-[var(--pp-text-muted)] hover:text-red-400 hover:bg-red-500/10 cursor-pointer rounded-xl"
               >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleLogout}
-                  className="w-10 h-10 mx-auto text-[var(--pp-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer"
-                >
-                  <LogOut className="w-5 h-5" />
-                </Button>
-              </motion.div>
+                <LogOut className="w-4 h-4" />
+              </Button>
             </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={8}>
+            <TooltipContent side="right" sideOffset={12}>
               Sign out
             </TooltipContent>
           </Tooltip>
         ) : (
-          <motion.div
-            whileHover={{ x: 3 }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          <Button
+            variant="ghost"
+            onClick={handleLogout}
+            className="w-full justify-start gap-3 px-3 py-2 h-auto text-xs text-[var(--pp-text-muted)] hover:text-red-400 hover:bg-red-500/10 cursor-pointer rounded-xl font-medium"
           >
-            <Button
-              variant="ghost"
-              onClick={handleLogout}
-              className="w-full justify-start gap-3 px-3 py-2.5 h-auto text-[var(--pp-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer"
-            >
-              <LogOut className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm font-medium">Sign out</span>
-            </Button>
-          </motion.div>
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            <span>Sign out</span>
+          </Button>
         )}
 
-        {/* Collapse toggle */}
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-        >
+        {/* Collapse toggle (hidden on mobile drawer) */}
+        {!isMobileDrawer && (
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleCollapsed}
             className={`
-              ${collapsed ? "w-10 h-10 mx-auto" : "w-full h-10"}
+              ${collapsed ? "w-10 h-10 mx-auto" : "w-full h-8"}
               text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)]
-              hover:bg-[var(--pp-bg-surface2)] transition-all duration-200 cursor-pointer
+              hover:bg-[var(--pp-bg-surface2)] transition-all duration-200 cursor-pointer rounded-xl mt-1
             `}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? (
               <ChevronRight className="w-4 h-4" />
             ) : (
-              <div className="flex items-center gap-2 w-full px-1">
-                <ChevronLeft className="w-4 h-4" />
-                <span className="text-xs">Collapse</span>
+              <div className="flex items-center justify-between w-full px-1 text-xs">
+                <span>Collapse view</span>
+                <ChevronLeft className="w-3.5 h-3.5" />
               </div>
             )}
           </Button>
-        </motion.div>
+        )}
       </div>
     </motion.aside>
   );

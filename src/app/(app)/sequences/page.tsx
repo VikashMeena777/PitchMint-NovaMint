@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getSequences, createSequence, deleteSequence, updateSequence } from "@/lib/actions/sequences";
+import {
+  getSequences,
+  createSequence,
+  deleteSequence,
+  updateSequence,
+} from "@/lib/actions/sequences";
 import { SequenceBuilderModal } from "@/components/sequence-builder-modal";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -15,7 +20,6 @@ import {
   Play,
   Pause,
   Trash2,
-  MoreHorizontal,
   X,
   Loader2,
   Mail,
@@ -23,8 +27,10 @@ import {
   Clock,
   Check,
   AlertCircle,
-  Settings2,
+  ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
+import { AnimatedZap } from "@/components/icons";
 
 type SequenceRow = {
   id: string;
@@ -45,25 +51,32 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Pl
 
 export default function SequencesPage() {
   const [sequences, setSequences] = useState<SequenceRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [supabaseReady] = useState(() => !!createClient());
+  const [isLoading, setIsLoading] = useState(() => !!createClient());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [builderTarget, setBuilderTarget] = useState<{ id: string; name: string } | null>(null);
-  const [supabaseReady, setSupabaseReady] = useState(false);
-
-  useEffect(() => {
-    const client = createClient();
-    setSupabaseReady(!!client);
-  }, []);
 
   const loadSequences = useCallback(async () => {
-    if (!supabaseReady) { setIsLoading(false); return; }
+    if (!supabaseReady) return;
     setIsLoading(true);
     const result = await getSequences();
     setSequences((result.data || []) as SequenceRow[]);
     setIsLoading(false);
   }, [supabaseReady]);
 
-  useEffect(() => { loadSequences(); }, [loadSequences]);
+  useEffect(() => {
+    if (!supabaseReady) return;
+    let ignore = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!ignore) {
+        await loadSequences();
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [loadSequences, supabaseReady]);
 
   const handleToggleStatus = async (seq: SequenceRow) => {
     const newStatus = seq.status === "active" ? "paused" : "active";
@@ -80,20 +93,25 @@ export default function SequencesPage() {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className="space-y-6 max-w-7xl"
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--pp-text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
+          <h1
+            className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--pp-text-primary)]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             Sequences
           </h1>
-          <p className="text-sm text-[var(--pp-text-muted)] mt-0.5">Automated multi-step email outreach</p>
+          <p className="text-xs sm:text-sm text-[var(--pp-text-secondary)] mt-1">
+            Automated multi-step outreach pipelines with conditional branching and AI personalization
+          </p>
         </div>
         <Button
           onClick={() => setShowCreateModal(true)}
-          className="bg-gradient-to-r from-[var(--pp-accent1)] to-[var(--pp-accent1-dark)] text-white font-semibold cursor-pointer btn-hover glow-indigo"
+          className="bg-gradient-to-r from-[var(--pp-accent1)] to-[var(--pp-accent1-dark)] text-white font-semibold cursor-pointer btn-hover glow-indigo text-xs sm:text-sm rounded-xl"
         >
           <Plus className="w-4 h-4 mr-1.5" />
           Create Sequence
@@ -102,106 +120,145 @@ export default function SequencesPage() {
 
       {/* Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-2xl p-6 bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] animate-pulse">
-              <div className="h-5 bg-[var(--pp-bg-surface2)] rounded w-2/3 mb-3" />
-              <div className="h-3 bg-[var(--pp-bg-surface2)] rounded w-full mb-2" />
+            <div
+              key={i}
+              className="rounded-2xl p-6 bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] animate-pulse space-y-3"
+            >
+              <div className="h-5 bg-[var(--pp-bg-surface2)] rounded w-2/3" />
+              <div className="h-3 bg-[var(--pp-bg-surface2)] rounded w-full" />
               <div className="h-3 bg-[var(--pp-bg-surface2)] rounded w-1/2" />
             </div>
           ))}
         </div>
       ) : sequences.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] as const }}
-          className="rounded-2xl p-16 bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] text-center"
-        >
-          <div className="w-16 h-16 rounded-2xl bg-[var(--pp-accent2)]/10 flex items-center justify-center mx-auto mb-4">
-            <Zap className="w-8 h-8 text-[var(--pp-accent2)]" />
+        <div className="rounded-2xl p-16 bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] text-center shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--pp-accent1)]/10 text-[var(--pp-accent1-light)] flex items-center justify-center mx-auto mb-4">
+            <AnimatedZap className="w-8 h-8" animated />
           </div>
-          <h3 className="text-lg font-semibold text-[var(--pp-text-primary)] mb-2" style={{ fontFamily: "var(--font-display)" }}>
+          <h3
+            className="text-lg font-bold text-[var(--pp-text-primary)] mb-2"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             No sequences yet
           </h3>
-          <p className="text-sm text-[var(--pp-text-muted)] max-w-sm mx-auto mb-6">
-            Create your first automated email sequence. PitchMint&apos;s AI will personalize each message for every prospect.
+          <p className="text-xs sm:text-sm text-[var(--pp-text-muted)] max-w-md mx-auto mb-6">
+            Build your first automated multi-step email campaign with conditional delays, open tracking, and AI-personalized pitches.
           </p>
           <Button
             onClick={() => setShowCreateModal(true)}
-            className="bg-gradient-to-r from-[var(--pp-accent1)] to-[var(--pp-accent1-dark)] text-white font-semibold cursor-pointer btn-hover glow-indigo"
+            className="bg-gradient-to-r from-[var(--pp-accent1)] to-[var(--pp-accent1-dark)] text-white font-semibold cursor-pointer btn-hover glow-indigo text-xs sm:text-sm rounded-xl"
           >
             <Plus className="w-4 h-4 mr-1.5" />
-            Create Your First Sequence
+            Build Your First Sequence
           </Button>
-        </motion.div>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {sequences.map((seq, i) => {
             const statusInfo = STATUS_MAP[seq.status] || STATUS_MAP.draft;
             const StatusIcon = statusInfo.icon;
             const stepCount = seq.sequence_steps?.[0]?.count || 0;
             const enrollCount = seq.sequence_enrollments?.[0]?.count || 0;
+
             return (
               <motion.div
                 key={seq.id}
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] as const }}
-                className="group rounded-2xl p-5 bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] card-hover"
+                transition={{ duration: 0.4, delay: i * 0.05 }}
+                className="group rounded-2xl p-5 bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] hover:border-[var(--pp-border-accent)] transition-all flex flex-col justify-between shadow-lg"
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
+                <div>
+                  {/* Top Status & Controls */}
+                  <div className="flex items-center justify-between mb-3">
                     <span
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border"
                       style={{
                         color: statusInfo.color,
-                        backgroundColor: `${statusInfo.color}12`,
-                        borderColor: `${statusInfo.color}25`,
+                        backgroundColor: `${statusInfo.color}14`,
+                        borderColor: `${statusInfo.color}28`,
                       }}
                     >
                       <StatusIcon className="w-3 h-3" />
                       {statusInfo.label}
                     </span>
+
+                    <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleToggleStatus(seq)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[var(--pp-bg-surface2)] text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] transition-colors cursor-pointer"
+                        title={seq.status === "active" ? "Pause sequence" : "Activate sequence"}
+                      >
+                        {seq.status === "active" ? <Pause className="w-3.5 h-3.5 text-amber-400" /> : <Play className="w-3.5 h-3.5 text-emerald-400" />}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(seq.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-[var(--pp-text-muted)] hover:text-red-400 transition-colors cursor-pointer"
+                        title="Delete sequence"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => handleToggleStatus(seq)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[var(--pp-bg-surface2)] text-[var(--pp-text-muted)] hover:text-[var(--pp-accent2)] transition-colors cursor-pointer"
-                      title={seq.status === "active" ? "Pause" : "Activate"}
+
+                  {/* Title & Description */}
+                  <Link href={`/sequences/${seq.id}`} className="block group/link cursor-pointer">
+                    <h3
+                      className="text-base font-bold text-[var(--pp-text-primary)] group-hover/link:text-[var(--pp-accent1-light)] transition-colors truncate"
+                      style={{ fontFamily: "var(--font-display)" }}
                     >
-                      {seq.status === "active" ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(seq.id)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-[var(--pp-text-muted)] hover:text-red-400 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      {seq.name}
+                    </h3>
+                    <p className="text-xs text-[var(--pp-text-muted)] mt-1 line-clamp-2 min-h-[32px]">
+                      {seq.description || "Automated outreach pipeline targeting qualified B2B leads."}
+                    </p>
+                  </Link>
+
+                  {/* Mini Visual Flow Pipeline */}
+                  <div className="my-4 p-2.5 rounded-xl bg-[var(--pp-bg-deepest)] border border-[var(--pp-border-subtle)] flex items-center gap-2 overflow-x-auto">
+                    <div className="w-5 h-5 rounded-md bg-[var(--pp-accent1)]/20 text-[var(--pp-accent1-light)] flex items-center justify-center text-[10px] font-mono flex-shrink-0">
+                      T
+                    </div>
+                    <div className="w-3 h-0.5 bg-[var(--pp-border-default)] flex-shrink-0" />
+                    <div className="w-5 h-5 rounded-md bg-[var(--pp-accent2)]/20 text-[var(--pp-accent2-light)] flex items-center justify-center text-[10px] font-mono flex-shrink-0">
+                      1
+                    </div>
+                    {stepCount > 1 && (
+                      <>
+                        <div className="w-3 h-0.5 bg-[var(--pp-border-default)] flex-shrink-0" />
+                        <div className="w-5 h-5 rounded-md bg-[var(--pp-accent3)]/20 text-[var(--pp-accent3-light)] flex items-center justify-center text-[10px] font-mono flex-shrink-0">
+                          {stepCount}
+                        </div>
+                      </>
+                    )}
+                    <span className="text-[10px] text-[var(--pp-text-muted)] ml-auto flex-shrink-0 font-medium">
+                      {stepCount} node{stepCount !== 1 ? "s" : ""}
+                    </span>
                   </div>
                 </div>
 
-                <h3 className="text-base font-semibold text-[var(--pp-text-primary)] mb-1 truncate" style={{ fontFamily: "var(--font-display)" }}>
-                  {seq.name}
-                </h3>
-                {seq.description && (
-                  <p className="text-xs text-[var(--pp-text-muted)] mb-4 line-clamp-2">{seq.description}</p>
-                )}
+                {/* Bottom Stats & Visual Builder CTA */}
+                <div className="flex items-center justify-between text-xs text-[var(--pp-text-muted)] pt-3 border-t border-[var(--pp-border-subtle)]">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5 text-[var(--pp-accent1-light)]" />
+                      {stepCount} steps
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-emerald-400" />
+                      {enrollCount} enrolled
+                    </span>
+                  </div>
 
-                <div className="flex items-center gap-4 text-xs text-[var(--pp-text-muted)] pt-3 border-t border-[var(--pp-border-subtle)]">
-                  <span className="flex items-center gap-1">
-                    <Mail className="w-3 h-3" /> {stepCount} step{stepCount !== 1 ? "s" : ""}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3" /> {enrollCount} enrolled
-                  </span>
-                  <button
-                    onClick={() => setBuilderTarget({ id: seq.id, name: seq.name })}
-                    className="ml-auto flex items-center gap-1 px-2 py-1 rounded-md hover:bg-[var(--pp-accent1)]/10 text-[var(--pp-text-muted)] hover:text-[var(--pp-accent1)] transition-colors cursor-pointer"
+                  <Link
+                    href={`/sequences/${seq.id}`}
+                    className="flex items-center gap-1 text-[var(--pp-accent1-light)] hover:underline font-semibold cursor-pointer"
                   >
-                    <Settings2 className="w-3 h-3" />
-                    <span>Edit Steps</span>
-                  </button>
+                    <span>Open Builder</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
               </motion.div>
             );
@@ -216,11 +273,14 @@ export default function SequencesPage() {
         onSuccess={loadSequences}
       />
 
-      {/* Sequence Builder Modal */}
+      {/* Legacy Builder Modal fallback */}
       {builderTarget && (
         <SequenceBuilderModal
           isOpen={!!builderTarget}
-          onClose={() => { setBuilderTarget(null); loadSequences(); }}
+          onClose={() => {
+            setBuilderTarget(null);
+            loadSequences();
+          }}
           sequenceId={builderTarget.id}
           sequenceName={builderTarget.name}
         />
@@ -229,7 +289,15 @@ export default function SequencesPage() {
   );
 }
 
-function CreateSequenceModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; onClose: () => void; onSuccess: () => void }) {
+function CreateSequenceModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -237,10 +305,16 @@ function CreateSequenceModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) { setError("Name is required"); return; }
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
-    const result = await createSequence({ name: name.trim(), description: description.trim() || undefined });
+    const result = await createSequence({
+      name: name.trim(),
+      description: description.trim() || undefined,
+    });
     if (result.error) {
       setError(result.error);
     } else {
@@ -256,47 +330,107 @@ function CreateSequenceModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; 
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-md z-50"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] as const }}
+            exit={{ opacity: 0, scale: 0.96, y: 16 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="glass-strong rounded-2xl w-full max-w-md shadow-2xl">
-              <div className="flex items-center justify-between p-6 border-b border-[var(--pp-border-subtle)]">
-                <div>
-                  <h2 className="text-lg font-bold text-[var(--pp-text-primary)]" style={{ fontFamily: "var(--font-display)" }}>Create Sequence</h2>
-                  <p className="text-xs text-[var(--pp-text-muted)] mt-0.5">Set up a new outreach flow</p>
+            <div className="bg-[var(--pp-bg-surface)] border border-[var(--pp-border-default)] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between p-5 border-b border-[var(--pp-border-subtle)] bg-[var(--pp-bg-surface2)]/40">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[var(--pp-accent1)]/15 text-[var(--pp-accent1-light)] flex items-center justify-center">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2
+                      className="text-base font-bold text-[var(--pp-text-primary)]"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      New Outreach Sequence
+                    </h2>
+                    <p className="text-xs text-[var(--pp-text-muted)]">
+                      Set up automated campaign flow
+                    </p>
+                  </div>
                 </div>
-                <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--pp-bg-surface2)] text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] transition-colors cursor-pointer">
+                <button
+                  onClick={onClose}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[var(--pp-bg-surface2)] text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] transition-colors cursor-pointer"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+
+              <form onSubmit={handleSubmit} className="p-5 space-y-4">
                 <div>
-                  <Label className="text-[var(--pp-text-secondary)] text-sm mb-1.5 block">Sequence name *</Label>
-                  <Input value={name} onChange={(e) => { setName(e.target.value); setError(null); }} placeholder="Cold Outreach — SaaS Founders"
-                    className="bg-[var(--pp-bg-deepest)] border-[var(--pp-border-default)] text-[var(--pp-text-primary)] placeholder:text-[var(--pp-text-muted)] focus:border-[var(--pp-accent1)]" />
+                  <Label className="text-xs text-[var(--pp-text-secondary)] mb-1.5 block font-medium">
+                    Sequence Name *
+                  </Label>
+                  <Input
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setError(null);
+                    }}
+                    placeholder="e.g. Q4 Series-A Founders Outreach"
+                    className="bg-[var(--pp-bg-deepest)] border-[var(--pp-border-default)] text-xs h-9 rounded-xl"
+                  />
                 </div>
+
                 <div>
-                  <Label className="text-[var(--pp-text-secondary)] text-sm mb-1.5 block">Description</Label>
-                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's this sequence about?" rows={2}
-                    className="bg-[var(--pp-bg-deepest)] border-[var(--pp-border-default)] text-[var(--pp-text-primary)] placeholder:text-[var(--pp-text-muted)] focus:border-[var(--pp-accent1)] resize-none" />
+                  <Label className="text-xs text-[var(--pp-text-secondary)] mb-1.5 block font-medium">
+                    Campaign Description (optional)
+                  </Label>
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Targeting YC/Techstars founders looking to scale outbound pipeline..."
+                    rows={3}
+                    className="bg-[var(--pp-bg-deepest)] border-[var(--pp-border-default)] text-xs rounded-xl resize-none"
+                  />
                 </div>
+
                 {error && (
-                  <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
+                  <div className="flex items-center gap-2 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{error}</span>
                   </div>
                 )}
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <Button type="button" variant="ghost" onClick={onClose} className="text-[var(--pp-text-muted)] cursor-pointer">Cancel</Button>
-                  <Button type="submit" disabled={isSubmitting || !name.trim()}
-                    className="bg-gradient-to-r from-[var(--pp-accent1)] to-[var(--pp-accent1-dark)] text-white font-semibold cursor-pointer btn-hover glow-indigo disabled:opacity-50">
-                    {isSubmitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
-                    Create Sequence
+
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClose}
+                    className="text-xs text-[var(--pp-text-muted)] cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting || !name.trim()}
+                    size="sm"
+                    className="bg-gradient-to-r from-[var(--pp-accent1)] to-[var(--pp-accent1-dark)] text-white font-semibold cursor-pointer btn-hover glow-indigo text-xs rounded-xl"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create & Configure"
+                    )}
                   </Button>
                 </div>
               </form>

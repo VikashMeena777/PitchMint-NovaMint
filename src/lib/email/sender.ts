@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import crypto from "crypto";
+import { generateUnsubscribeToken } from "@/lib/security/hmac";
 
 let resendClient: Resend | null = null;
 
@@ -27,6 +28,12 @@ export type SendEmailParams = {
   // Sender context for template
   companyName?: string;
   mailingAddress?: string;
+  // Recipient & user context for secure unsubscribe link
+  prospectId?: string;
+  userId?: string;
+  prospect?: { id: string };
+  user?: { id: string };
+  unsubscribeToken?: string;
 };
 
 export type SendEmailResult = {
@@ -105,6 +112,11 @@ export async function sendEmail(
     companyName: params.companyName || "",
     fromEmail: fromAddress,
     mailingAddress: params.mailingAddress || "",
+    prospectId: params.prospectId || params.prospect?.id,
+    userId: params.userId || params.user?.id,
+    prospect: params.prospect,
+    user: params.user,
+    unsubscribeToken: params.unsubscribeToken,
   });
 
   // Inject tracking if enabled
@@ -131,23 +143,23 @@ export async function sendEmail(
 
     return {
       success: true,
-      messageId: data?.id || undefined,
+      messageId: data?.id,
       trackingPixelId,
     };
   } catch (err) {
     const message =
-      err instanceof Error ? err.message : "Unknown send error";
-    console.error("[Email] Send failed:", message);
+      err instanceof Error ? err.message : "Failed to send email";
+    console.error("[Resend] Send error:", message);
     return { success: false, error: message };
   }
 }
 
 /**
- * Send batch emails (up to 100 at a time)
+ * Send a batch of up to 100 emails in a single API call
  */
 export async function sendBatchEmails(
   emails: SendEmailParams[]
-): Promise<SendEmailResult[]> {
+): Promise<Array<{ success: boolean; messageId?: string; error?: string }>> {
   const resend = getResend();
   if (!resend) {
     return emails.map(() => ({
@@ -162,6 +174,11 @@ export async function sendBatchEmails(
       companyName: e.companyName || "",
       fromEmail: e.from || "",
       mailingAddress: e.mailingAddress || "",
+      prospectId: e.prospectId || e.prospect?.id,
+      userId: e.userId || e.user?.id,
+      prospect: e.prospect,
+      user: e.user,
+      unsubscribeToken: e.unsubscribeToken,
     });
     const trackingPixelId = generateTrackingPixelId();
     if (e.trackOpens !== false) {
@@ -213,6 +230,12 @@ export function formatOutreachHtml(
     companyName: string;
     fromEmail: string;
     mailingAddress: string;
+    prospectId?: string;
+    userId?: string;
+    prospect?: { id: string };
+    user?: { id: string };
+    token?: string;
+    unsubscribeToken?: string;
   }
 ): string {
   // Detect if body is already HTML (from rich text editor)
@@ -240,7 +263,19 @@ export function formatOutreachHtml(
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const unsubscribeUrl = `${appUrl}/api/emails/unsubscribe`;
+  const pId = context.prospect?.id || context.prospectId;
+  const uId = context.user?.id || context.userId;
+
+  let unsubscribeUrl = `${appUrl}/api/emails/unsubscribe`;
+  if (pId && uId) {
+    const hmacToken =
+      context.unsubscribeToken ||
+      context.token ||
+      generateUnsubscribeToken(pId, uId);
+    unsubscribeUrl = `${appUrl}/api/emails/unsubscribe?id=${encodeURIComponent(
+      pId
+    )}&u=${encodeURIComponent(uId)}&token=${encodeURIComponent(hmacToken)}`;
+  }
 
   return `<!DOCTYPE html>
 <html lang="en">

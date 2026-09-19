@@ -6,6 +6,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { safeDecrypt, safeEncrypt } from "@/lib/utils/encryption";
 
 type GmailSendParams = {
   to: string;
@@ -91,21 +92,26 @@ export async function getValidToken(userId: string): Promise<string | null> {
     : new Date(0);
   const isExpired = expiresAt.getTime() - 5 * 60 * 1000 < Date.now();
 
+  // Decrypt tokens with backward-compatible plaintext fallback (SEC-04)
+  const rawAccessToken = safeDecrypt(user.gmail_access_token);
+  const rawRefreshToken = safeDecrypt(user.gmail_refresh_token);
+
   // If we have a valid access token and it's not expired, return it
-  if (user.gmail_access_token && !isExpired) {
-    return user.gmail_access_token;
+  if (rawAccessToken && !isExpired) {
+    return rawAccessToken;
   }
 
   // If access token is expired or missing, try to refresh it
-  if (user.gmail_refresh_token) {
+  if (rawRefreshToken) {
     console.log(`[Gmail] Refreshing expired or missing access token for user ${userId}`);
-    const refreshed = await refreshGmailToken(user.gmail_refresh_token);
+    const refreshed = await refreshGmailToken(rawRefreshToken);
     if (refreshed) {
-      // Store the new token
+      // Store the new token (encrypted with AES-256-GCM)
+      const encryptedAccessToken = safeEncrypt(refreshed.accessToken);
       await supabase
         .from("users")
         .update({
-          gmail_access_token: refreshed.accessToken,
+          gmail_access_token: encryptedAccessToken,
           gmail_token_expires_at: refreshed.expiresAt,
         })
         .eq("id", userId);
