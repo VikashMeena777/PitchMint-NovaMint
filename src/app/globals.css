@@ -94,6 +94,15 @@
   --pp-glow-cyan: rgba(0, 240, 255, 0.22);
   --pp-glow-purple: rgba(217, 70, 239, 0.22);
 
+  /* Subtle glassmorphic variables */
+  --pp-glass-bg: rgba(7, 11, 21, 0.72);
+  --pp-glass-bg-subtle: rgba(7, 11, 21, 0.45);
+  --pp-glass-bg-elevated: rgba(14, 20, 36, 0.82);
+  --pp-glass-border: rgba(93, 92, 255, 0.16);
+  --pp-glass-border-subtle: rgba(255, 255, 255, 0.08);
+  --pp-glass-backdrop: blur(16px) saturate(180%);
+  --pp-glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+
   /* Spacing */
   --pp-space-xs: 0.25rem;
   --pp-space-sm: 0.5rem;
@@ -223,7 +232,7 @@
     -moz-osx-font-smoothing: grayscale;
   }
   html {
-    @apply scroll-smooth;
+    scroll-behavior: auto;
     font-family: var(--font-body), system-ui, -apple-system, sans-serif;
   }
 

@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/utils/activity-logger";
+import { sanitizePostgrestSearch } from "@/lib/security";
+import { canUserPerformAction } from "@/lib/billing/plans";
 
 export type ProspectFormData = {
   email: string;
@@ -43,9 +45,12 @@ export async function getProspects(filters?: {
   }
 
   if (filters?.search) {
-    query = query.or(
-      `email.ilike.%${filters.search}%,first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%`
-    );
+    const sanitizedSearch = sanitizePostgrestSearch(filters.search);
+    if (sanitizedSearch) {
+      query = query.or(
+        `email.ilike.%${sanitizedSearch}%,first_name.ilike.%${sanitizedSearch}%,last_name.ilike.%${sanitizedSearch}%,company_name.ilike.%${sanitizedSearch}%`
+      );
+    }
   }
 
   if (filters?.limit) {
@@ -66,6 +71,24 @@ export async function addProspect(formData: ProspectFormData) {
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
+
+  // SEC-07: Plan quota enforcement
+  const { data: userProfile } = await supabase
+    .from("users")
+    .select("plan, monthly_prospect_count")
+    .eq("id", user.id)
+    .single();
+
+  const userPlan = userProfile?.plan || "free";
+  const currentCount = userProfile?.monthly_prospect_count ?? 0;
+
+  const quotaCheck = canUserPerformAction(userPlan, "add_prospect", currentCount);
+  if (!quotaCheck.allowed) {
+    return {
+      error: quotaCheck.message || "Monthly prospect limit reached. Please upgrade your plan.",
+      allowed: false,
+    };
+  }
 
   const { data, error } = await supabase
     .from("prospects")

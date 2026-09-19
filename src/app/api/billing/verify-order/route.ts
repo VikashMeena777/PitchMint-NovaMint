@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify the plan is valid
-    if (!PLANS[planId as PlanId]) {
+    const targetPlan = PLANS[planId as PlanId];
+    if (!targetPlan) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
@@ -37,6 +38,29 @@ export async function GET(request: NextRequest) {
     console.log(`[Billing] Verify order ${orderId}:`, JSON.stringify(orderStatus).slice(0, 300));
 
     if (orderStatus.order_status === "PAID") {
+      // SEC-05: Verify order_amount matches the catalog price for requested plan
+      if (orderStatus.order_amount !== targetPlan.price) {
+        console.error(
+          `[Billing] Amount mismatch for order ${orderId}: paid ${orderStatus.order_amount}, expected ${targetPlan.price}`
+        );
+        return NextResponse.json(
+          { error: "Order amount does not match plan price", activated: false },
+          { status: 400 }
+        );
+      }
+
+      // SEC-05: Verify order_tags.plan_id matches requested planId
+      const taggedPlanId = (orderStatus.order_tags as Record<string, string> | undefined)?.plan_id;
+      if (taggedPlanId && taggedPlanId !== planId) {
+        console.error(
+          `[Billing] Plan tag mismatch for order ${orderId}: tagged ${taggedPlanId}, requested ${planId}`
+        );
+        return NextResponse.json(
+          { error: "Order tag does not match requested plan", activated: false },
+          { status: 400 }
+        );
+      }
+
       // Calculate expiry (30 days from now)
       const expiresAt = new Date(
         Date.now() + 30 * 24 * 60 * 60 * 1000

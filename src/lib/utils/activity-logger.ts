@@ -110,20 +110,22 @@ export async function logActivities(entries: ActivityLogEntry[]): Promise<void> 
   }
 }
 
-/**
- * Get recent activity for a user (for activity feed UI)
- */
-export async function getRecentActivity(
-  userId: string,
-  limit = 50
-): Promise<Array<{
+export type ActivityHistoryItem = {
   id: string;
   action: string;
   resource_type: string;
   resource_id: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
-}>> {
+};
+
+/**
+ * Get recent activity for a user (for activity feed UI)
+ */
+export async function getRecentActivity(
+  userId: string,
+  limit = 50
+): Promise<ActivityHistoryItem[]> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -138,7 +140,7 @@ export async function getRecentActivity(
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    return (data as any[]) || [];
+    return (data as unknown as ActivityHistoryItem[]) || [];
   } catch {
     return [];
   }

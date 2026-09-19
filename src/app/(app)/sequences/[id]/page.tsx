@@ -4,8 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,19 +21,21 @@ import {
   ArrowLeft,
   Plus,
   Trash2,
-  Mail,
   Clock,
-  GripVertical,
   Sparkles,
   Save,
   Play,
   Pause,
-  Users,
-  ArrowDown,
   Wand2,
   GitBranch,
-  ToggleRight,
+  LayoutGrid,
+  Workflow,
 } from "lucide-react";
+import {
+  VisualNodeGraph,
+  type SequenceStepNode,
+  validateSequenceForActivation,
+} from "@/components/sequences/visual-node-graph";
 
 type Sequence = {
   id: string;
@@ -47,35 +47,16 @@ type Sequence = {
   created_at: string;
 };
 
-type SequenceStep = {
-  id?: string;
-  sequence_id: string;
-  step_number: number;
-  step_type: string;
-  subject_template: string;
-  body_template: string;
-  delay_days: number;
-  delay_hours: number;
-  use_ai_generation: boolean;
-  ai_prompt_instructions: string;
-  is_new?: boolean;
-  // A/B testing
-  ab_enabled?: boolean;
-  ab_subject_b?: string;
-  ab_body_b?: string;
-  // Condition steps
-  condition_type?: string;
-  condition_value?: string;
-};
-
 export default function SequenceEditorPage() {
   const params = useParams();
   const router = useRouter();
   const [sequence, setSequence] = useState<Sequence | null>(null);
-  const [steps, setSteps] = useState<SequenceStep[]>([]);
+  const [steps, setSteps] = useState<SequenceStepNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [selectedStepIndex, setSelectedStepIndex] = useState<number | null>(0);
+  const [viewMode, setViewMode] = useState<"graph" | "editor">("graph");
 
   const sequenceId = params.id as string;
 
@@ -107,16 +88,40 @@ export default function SequenceEditorPage() {
       .eq("sequence_id", sequenceId)
       .order("step_number", { ascending: true });
 
-    if (stepsData) setSteps(stepsData as SequenceStep[]);
+    if (stepsData && stepsData.length > 0) {
+      const mappedSteps: SequenceStepNode[] = stepsData.map((s: Record<string, unknown>) => ({
+        id: s.id as string,
+        sequence_id: s.sequence_id as string,
+        step_number: s.step_number as number,
+        step_type: (s.step_type as string) || "email",
+        subject_template: (s.subject_template as string) || "",
+        body_template: (s.body_template as string) || "",
+        delay_days: (s.delay_days as number) || 0,
+        delay_hours: (s.delay_hours as number) || 0,
+        use_ai_generation: Boolean(s.use_ai_generation),
+        ai_prompt_instructions: (s.ai_prompt_instructions as string) || "",
+        ab_enabled: Boolean((s.ab_test as Record<string, unknown>)?.enabled),
+        ab_subject_b: ((s.ab_test as Record<string, unknown>)?.subject_b as string) || "",
+        ab_body_b: ((s.ab_test as Record<string, unknown>)?.body_b as string) || "",
+        condition_type: (s.condition_type as string) || "opened",
+        condition_value: ((s.condition_value as Record<string, unknown>)?.value as string) || "",
+      }));
+      setSteps(mappedSteps);
+      if (selectedStepIndex === null) setSelectedStepIndex(0);
+    }
     setLoading(false);
-  }, [sequenceId, router]);
+  }, [sequenceId, router, selectedStepIndex]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const addStep = () => {
-    const newStep: SequenceStep = {
+    if (steps.length >= 20) {
+      toast.error("Maximum 20 steps reached");
+      return;
+    }
+    const newStep: SequenceStepNode = {
       sequence_id: sequenceId,
       step_number: steps.length + 1,
       step_type: "email",
@@ -126,9 +131,9 @@ export default function SequenceEditorPage() {
       delay_hours: 0,
       use_ai_generation: true,
       ai_prompt_instructions: "",
-      is_new: true,
     };
     setSteps([...steps, newStep]);
+    setSelectedStepIndex(steps.length);
   };
 
   const removeStep = (index: number) => {
@@ -137,11 +142,16 @@ export default function SequenceEditorPage() {
       step_number: i + 1,
     }));
     setSteps(updated);
+    if (selectedStepIndex === index) {
+      setSelectedStepIndex(updated.length > 0 ? 0 : null);
+    } else if (selectedStepIndex !== null && selectedStepIndex > index) {
+      setSelectedStepIndex(selectedStepIndex - 1);
+    }
   };
 
   const updateStep = (
     index: number,
-    field: keyof SequenceStep,
+    field: keyof SequenceStepNode,
     value: unknown
   ) => {
     const updated = [...steps];
@@ -156,6 +166,7 @@ export default function SequenceEditorPage() {
     try {
       const supabase = createClient();
       if (!supabase) return;
+
       // Delete existing steps
       await supabase
         .from("sequence_steps")
@@ -170,11 +181,10 @@ export default function SequenceEditorPage() {
           step_type: s.step_type,
           subject_template: s.subject_template,
           body_template: s.body_template,
-          delay_days: s.delay_days,
-          delay_hours: s.delay_hours,
+          delay_days: Math.max(0, s.delay_days),
+          delay_hours: Math.max(0, s.delay_hours),
           use_ai_generation: s.use_ai_generation,
           ai_prompt_instructions: s.ai_prompt_instructions,
-          // A/B test data
           ab_test: s.ab_enabled
             ? {
                 enabled: true,
@@ -182,7 +192,6 @@ export default function SequenceEditorPage() {
                 body_b: s.ab_body_b || "",
               }
             : null,
-          // Condition data
           condition_type: s.step_type === "condition" ? (s.condition_type || "opened") : null,
           condition_value: s.step_type === "condition" && s.condition_value
             ? { value: s.condition_value }
@@ -202,7 +211,7 @@ export default function SequenceEditorPage() {
         .update({ total_steps: steps.length })
         .eq("id", sequenceId);
 
-      toast.success("Sequence saved!");
+      toast.success("Sequence saved successfully!");
       fetchData();
     } catch (error) {
       console.error("Save error:", error);
@@ -214,13 +223,22 @@ export default function SequenceEditorPage() {
 
   const handleToggleStatus = async () => {
     if (!sequence) return;
+    const targetStatus = sequence.status === "active" ? "paused" : "active";
+
+    if (targetStatus === "active") {
+      const check = validateSequenceForActivation(steps);
+      if (!check.valid) {
+        toast.error(check.error || "Cannot activate empty sequence");
+        return;
+      }
+    }
+
     const supabase = createClient();
     if (!supabase) return;
-    const newStatus = sequence.status === "active" ? "paused" : "active";
 
     const { error } = await supabase
       .from("sequences")
-      .update({ status: newStatus })
+      .update({ status: targetStatus })
       .eq("id", sequenceId);
 
     if (error) {
@@ -228,37 +246,44 @@ export default function SequenceEditorPage() {
       return;
     }
 
-    setSequence({ ...sequence, status: newStatus });
-    toast.success(`Sequence ${newStatus === "active" ? "activated" : "paused"}`);
+    setSequence({ ...sequence, status: targetStatus });
+    toast.success(`Sequence ${targetStatus === "active" ? "activated" : "paused"}`);
   };
 
   const handleAIGenerate = async () => {
     setGenerating(true);
     try {
       const { suggestSequenceEmails } = await import("@/lib/ai/engine");
-
       const supabase = createClient();
       if (!supabase) return;
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
 
-      const { data: profile } = await supabase
-        .from("users")
-        .select("value_proposition, target_audience, tone_preset")
-        .eq("id", user.id)
-        .single();
+      let valProp = "AI-powered cold outreach with verified deliverability";
+      let audience = "B2B SaaS Founders and Growth Leads";
+      let tone = "direct";
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from("users")
+          .select("value_proposition, target_audience, tone_preset")
+          .eq("id", user.id)
+          .single();
+        if (profile?.value_proposition) valProp = profile.value_proposition;
+        if (profile?.target_audience) audience = profile.target_audience;
+        if (profile?.tone_preset) tone = profile.tone_preset;
+      }
 
       const suggestions = await suggestSequenceEmails({
         totalSteps: 4,
-        value_proposition: profile?.value_proposition || "",
-        target_audience: profile?.target_audience || "",
-        tone: profile?.tone_preset || "professional",
+        value_proposition: valProp,
+        target_audience: audience,
+        tone: tone,
       });
 
       if (suggestions && suggestions.length > 0) {
-        const newSteps: SequenceStep[] = suggestions.map((s) => ({
+        const newSteps: SequenceStepNode[] = suggestions.map((s) => ({
           sequence_id: sequenceId,
           step_number: s.step,
           step_type: "email",
@@ -268,16 +293,16 @@ export default function SequenceEditorPage() {
           delay_hours: 0,
           use_ai_generation: true,
           ai_prompt_instructions: "",
-          is_new: true,
         }));
         setSteps(newSteps);
-        toast.success("AI generated sequence steps! Review and save.");
+        setSelectedStepIndex(0);
+        toast.success("AI generated sequence pipeline! Review and save.");
       } else {
-        toast.error("AI couldn't generate suggestions. Check your API keys.");
+        toast.error("AI could not generate suggestions. Please check your API key.");
       }
     } catch (error) {
       console.error("AI generation error:", error);
-      toast.error("Failed to generate AI suggestions");
+      toast.error("Failed to generate AI sequence");
     } finally {
       setGenerating(false);
     }
@@ -285,386 +310,428 @@ export default function SequenceEditorPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6 max-w-5xl mx-auto">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-96" />
+      <div className="p-6 space-y-6 max-w-6xl mx-auto animate-pulse">
+        <Skeleton className="h-10 w-64 bg-zinc-800" />
+        <Skeleton className="h-[480px] w-full bg-zinc-800 rounded-2xl" />
       </div>
     );
   }
 
   if (!sequence) return null;
 
+  const currentStep = selectedStepIndex !== null ? steps[selectedStepIndex] : null;
+
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Top Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.push("/sequences")}
+            className="text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)] hover:bg-[var(--pp-bg-surface2)] cursor-pointer rounded-xl"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-white">{sequence.name}</h1>
-            {sequence.description && (
-              <p className="text-sm text-zinc-400 mt-0.5">
-                {sequence.description}
-              </p>
-            )}
+            <div className="flex items-center gap-2.5">
+              <h1
+                className="text-xl sm:text-2xl font-bold text-[var(--pp-text-primary)]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                {sequence.name}
+              </h1>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                  sequence.status === "active"
+                    ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/30"
+                    : sequence.status === "paused"
+                    ? "text-amber-400 bg-amber-500/15 border-amber-500/30"
+                    : "text-[var(--pp-text-muted)] bg-[var(--pp-bg-surface2)] border-[var(--pp-border-subtle)]"
+                }`}
+              >
+                {sequence.status}
+              </span>
+            </div>
+            <p className="text-xs text-[var(--pp-text-muted)] mt-0.5">
+              {steps.length} steps · {sequence.enrolled_count || 0} enrolled prospects
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge
-            className={
-              sequence.status === "active"
-                ? "bg-green-500/20 text-green-300"
-                : sequence.status === "paused"
-                ? "bg-amber-500/20 text-amber-300"
-                : "bg-zinc-500/20 text-zinc-300"
-            }
-          >
-            {sequence.status}
-          </Badge>
-          <div className="text-xs text-zinc-500 flex items-center gap-1">
-            <Users className="h-3.5 w-3.5" />
-            {sequence.enrolled_count || 0} enrolled
+
+        {/* Header Actions */}
+        <div className="flex items-center flex-wrap gap-2">
+          {/* View toggle */}
+          <div className="flex items-center gap-1 bg-[var(--pp-bg-surface)] p-1 rounded-xl border border-[var(--pp-border-default)] text-xs">
+            <button
+              onClick={() => setViewMode("graph")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                viewMode === "graph"
+                  ? "bg-[var(--pp-accent1)] text-white shadow-sm"
+                  : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)]"
+              }`}
+            >
+              <Workflow className="w-3.5 h-3.5" />
+              <span>Node Graph</span>
+            </button>
+            <button
+              onClick={() => setViewMode("editor")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                viewMode === "editor"
+                  ? "bg-[var(--pp-accent1)] text-white shadow-sm"
+                  : "text-[var(--pp-text-muted)] hover:text-[var(--pp-text-primary)]"
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Step List</span>
+            </button>
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAIGenerate}
+            disabled={generating}
+            className="border-[var(--pp-border-accent)] text-[var(--pp-accent1-light)] hover:bg-[var(--pp-accent1)]/10 cursor-pointer text-xs rounded-xl"
+          >
+            <Wand2 className="w-3.5 h-3.5 mr-1" />
+            {generating ? "Generating..." : "AI Generate"}
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
             onClick={handleToggleStatus}
+            className="border-[var(--pp-border-default)] text-[var(--pp-text-secondary)] hover:bg-[var(--pp-bg-surface2)] cursor-pointer text-xs rounded-xl"
           >
             {sequence.status === "active" ? (
               <>
-                <Pause className="h-4 w-4 mr-1.5" /> Pause
+                <Pause className="w-3.5 h-3.5 mr-1 text-amber-400" />
+                Pause
               </>
             ) : (
               <>
-                <Play className="h-4 w-4 mr-1.5" /> Activate
+                <Play className="w-3.5 h-3.5 mr-1 text-emerald-400" />
+                Activate
               </>
             )}
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving}>
-            <Save className="h-4 w-4 mr-1.5" />
-            {saving ? "Saving..." : "Save"}
+
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            size="sm"
+            className="bg-gradient-to-r from-[var(--pp-accent1)] to-[var(--pp-accent1-dark)] text-white font-semibold cursor-pointer btn-hover glow-indigo text-xs rounded-xl"
+          >
+            <Save className="w-3.5 h-3.5 mr-1" />
+            {saving ? "Saving..." : "Save Sequence"}
           </Button>
         </div>
       </div>
 
-      {/* AI Generate */}
-      {steps.length === 0 && (
-        <Card className="bg-gradient-to-r from-violet-500/5 to-blue-500/5 border-violet-800/30">
-          <CardContent className="p-6 text-center">
-            <Wand2 className="h-10 w-10 mb-3 mx-auto text-violet-400" />
-            <h3 className="text-lg font-semibold text-white mb-1">
-              AI Sequence Generator
-            </h3>
-            <p className="text-sm text-zinc-400 mb-4 max-w-md mx-auto">
-              Let AI create a complete email sequence based on your product and
-              target audience. You can customize each step after.
-            </p>
-            <Button
-              onClick={handleAIGenerate}
-              disabled={generating}
-              className="bg-violet-600 hover:bg-violet-500"
-            >
-              {generating ? (
-                <Sparkles className="h-4 w-4 mr-2 animate-pulse" />
-              ) : (
-                <Sparkles className="h-4 w-4 mr-2" />
-              )}
-              {generating ? "Generating..." : "Generate with AI"}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Steps Timeline */}
-      <div className="space-y-0">
-        {steps.map((step, index) => (
-          <div key={index}>
-            {/* Connection line */}
-            {index > 0 && (
-              <div className="flex items-center justify-center py-2">
-                <div className="flex items-center gap-2 text-xs text-zinc-500">
-                  <div className="h-6 w-px bg-zinc-700" />
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>
-                    Wait {step.delay_days}d {step.delay_hours > 0 ? `${step.delay_hours}h` : ""}
-                  </span>
-                  <div className="h-6 w-px bg-zinc-700" />
-                </div>
-              </div>
-            )}
-
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 transition-colors">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <GripVertical className="h-4 w-4 text-zinc-600" />
-                      <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                        <Mail className="h-4 w-4 text-blue-400" />
-                      </div>
-                    </div>
-                    <CardTitle className="text-sm font-medium text-white">
-                      Step {step.step_number}
-                    </CardTitle>
-                    {step.is_new && (
-                      <Badge variant="outline" className="text-xs text-blue-400 border-blue-400/30">
-                        New
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {index > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs text-zinc-500">
-                          Delay
-                        </Label>
-                        <Input
-                          type="number"
-                          value={step.delay_days}
-                          onChange={(e) =>
-                            updateStep(
-                              index,
-                              "delay_days",
-                              parseInt(e.target.value) || 0
-                            )
-                          }
-                          className="w-16 h-7 text-xs bg-zinc-800 border-zinc-700"
-                          min={0}
-                        />
-                        <span className="text-xs text-zinc-500">days</span>
-                      </div>
-                    )}
+      {/* Main Layout: Node Graph + Inspector Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left / Center View: Visual Node Graph or Step List */}
+        <div className="lg:col-span-7 xl:col-span-8">
+          {viewMode === "graph" ? (
+            <VisualNodeGraph
+              steps={steps}
+              onSelectStep={(idx) => setSelectedStepIndex(idx)}
+              selectedStepIndex={selectedStepIndex}
+              onAddStep={addStep}
+              onDeleteStep={removeStep}
+              isActive={sequence.status === "active"}
+            />
+          ) : (
+            <div className="space-y-4">
+              {steps.map((step, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => setSelectedStepIndex(idx)}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                    selectedStepIndex === idx
+                      ? "bg-[var(--pp-bg-surface)] border-[var(--pp-accent1)] ring-1 ring-[var(--pp-accent1)]"
+                      : "bg-[var(--pp-bg-surface)] border-[var(--pp-border-subtle)] hover:border-[var(--pp-border-accent)]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[var(--pp-text-primary)]">
+                      Step {step.step_number}: {step.step_type}
+                    </span>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeStep(index)}
-                      className="h-7 w-7 text-zinc-600 hover:text-red-400"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeStep(idx);
+                      }}
+                      className="h-6 w-6 text-[var(--pp-text-muted)] hover:text-red-400"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
+                  <p className="text-xs text-[var(--pp-text-muted)] mt-1 truncate">
+                    {step.subject_template || "AI Generated"}
+                  </p>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* AI Toggle */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={step.use_ai_generation}
-                      onCheckedChange={(checked) =>
-                        updateStep(index, "use_ai_generation", checked)
-                      }
-                    />
-                    <Label className="text-sm text-zinc-400">
-                      <Sparkles className="h-3.5 w-3.5 inline mr-1" />
-                      AI-generated (personalized per prospect)
-                    </Label>
+              ))}
+              <Button
+                onClick={addStep}
+                variant="outline"
+                className="w-full border-dashed border-[var(--pp-border-default)] cursor-pointer text-xs"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add Step
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Right Panel: Step Inspector / Node Configuration */}
+        <div className="lg:col-span-5 xl:col-span-4 rounded-2xl bg-[var(--pp-bg-surface)] border border-[var(--pp-border-subtle)] p-5 shadow-xl space-y-5">
+          {currentStep && selectedStepIndex !== null ? (
+            <>
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--pp-border-subtle)]">
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--pp-text-primary)]">
+                    Configure Step {currentStep.step_number}
+                  </h3>
+                  <p className="text-[11px] text-[var(--pp-text-muted)]">
+                    Node parameters & branch conditions
+                  </p>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--pp-accent1)]/15 text-[var(--pp-accent1-light)] uppercase">
+                  {currentStep.step_type}
+                </span>
+              </div>
+
+              {/* Step Type Selection */}
+              <div>
+                <Label className="text-xs text-[var(--pp-text-secondary)] mb-1.5 block font-medium">
+                  Node Action Type
+                </Label>
+                <Select
+                  value={currentStep.step_type}
+                  onValueChange={(val: string | null) =>
+                    updateStep(selectedStepIndex, "step_type", val || "email")
+                  }
+                >
+                  <SelectTrigger className="w-full bg-[var(--pp-bg-deepest)] border-[var(--pp-border-default)] text-xs h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[var(--pp-bg-surface)] border-[var(--pp-border-default)] text-xs">
+                    <SelectItem value="email">Outreach Email</SelectItem>
+                    <SelectItem value="wait">Delay / Wait Interval</SelectItem>
+                    <SelectItem value="condition">Conditional Branch</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Delay Configuration */}
+              {selectedStepIndex > 0 && (
+                <div className="p-3 rounded-xl bg-[var(--pp-bg-deepest)] border border-[var(--pp-border-subtle)] space-y-2">
+                  <Label className="text-xs text-[var(--pp-text-secondary)] flex items-center gap-1.5 font-medium">
+                    <Clock className="w-3.5 h-3.5 text-[var(--pp-accent3-light)]" />
+                    Wait Before Executing
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={currentStep.delay_days}
+                        onChange={(e) =>
+                          updateStep(
+                            selectedStepIndex,
+                            "delay_days",
+                            Math.max(0, parseInt(e.target.value) || 0)
+                          )
+                        }
+                        className="bg-[var(--pp-bg-surface)] border-[var(--pp-border-default)] text-xs h-8"
+                      />
+                      <span className="text-[10px] text-[var(--pp-text-muted)] mt-0.5 block">Days</span>
+                    </div>
+                    <div>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={currentStep.delay_hours}
+                        onChange={(e) =>
+                          updateStep(
+                            selectedStepIndex,
+                            "delay_hours",
+                            Math.max(0, parseInt(e.target.value) || 0)
+                          )
+                        }
+                        className="bg-[var(--pp-bg-surface)] border-[var(--pp-border-default)] text-xs h-8"
+                      />
+                      <span className="text-[10px] text-[var(--pp-text-muted)] mt-0.5 block">Hours</span>
+                    </div>
                   </div>
+                </div>
+              )}
+
+              {/* Conditional Branch Settings */}
+              {currentStep.step_type === "condition" && (
+                <div className="p-3 rounded-xl bg-[var(--pp-bg-deepest)] border border-[var(--pp-border-subtle)] space-y-3">
+                  <Label className="text-xs text-[var(--pp-text-secondary)] flex items-center gap-1.5 font-medium">
+                    <GitBranch className="w-3.5 h-3.5 text-[var(--pp-accent2-light)]" />
+                    Branch Rule
+                  </Label>
                   <Select
-                    value={step.step_type}
-                    onValueChange={(val) => updateStep(index, "step_type", val)}
+                    value={currentStep.condition_type || "opened"}
+                    onValueChange={(val: string | null) =>
+                      updateStep(selectedStepIndex, "condition_type", val || "opened")
+                    }
                   >
-                    <SelectTrigger className="w-32 h-7 text-xs bg-zinc-800 border-zinc-700">
+                    <SelectTrigger className="w-full bg-[var(--pp-bg-surface)] border-[var(--pp-border-default)] text-xs h-8">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="wait">Wait</SelectItem>
-                      <SelectItem value="condition">Condition</SelectItem>
+                    <SelectContent className="bg-[var(--pp-bg-surface)] border-[var(--pp-border-default)] text-xs">
+                      <SelectItem value="opened">Opened previous email</SelectItem>
+                      <SelectItem value="clicked">Clicked link in previous email</SelectItem>
+                      <SelectItem value="replied">Replied to sequence</SelectItem>
+                      <SelectItem value="not_opened">Did not open email within 48h</SelectItem>
+                      <SelectItem value="has_tag">Lead has tag</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
 
-                {step.use_ai_generation ? (
-                  <div>
-                    <Label className="text-xs text-zinc-500 mb-1.5 block">
-                      AI Instructions (optional — guide what the AI writes)
-                    </Label>
-                    <Textarea
-                      placeholder="e.g., Focus on their recent funding round. Mention our case study with [similar company]. Keep it under 80 words."
-                      value={step.ai_prompt_instructions}
+                  {currentStep.condition_type === "has_tag" && (
+                    <Input
+                      placeholder="e.g. Enterprise, High Priority"
+                      value={currentStep.condition_value || ""}
                       onChange={(e) =>
-                        updateStep(
-                          index,
-                          "ai_prompt_instructions",
-                          e.target.value
-                        )
+                        updateStep(selectedStepIndex, "condition_value", e.target.value)
                       }
-                      className="bg-zinc-800 border-zinc-700 text-sm min-h-[60px]"
+                      className="bg-[var(--pp-bg-surface)] border-[var(--pp-border-default)] text-xs h-8"
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Email Content Configuration */}
+              {currentStep.step_type === "email" && (
+                <div className="space-y-4">
+                  {/* AI Generation Switch */}
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--pp-bg-deepest)] border border-[var(--pp-border-subtle)]">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[var(--pp-accent1-light)]" />
+                      <div>
+                        <span className="text-xs font-semibold text-[var(--pp-text-primary)] block">
+                          AI Personalization
+                        </span>
+                        <span className="text-[10px] text-[var(--pp-text-muted)] block">
+                          Tailor copy per prospect
+                        </span>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={currentStep.use_ai_generation}
+                      onCheckedChange={(checked) =>
+                        updateStep(selectedStepIndex, "use_ai_generation", checked)
+                      }
                     />
                   </div>
-                ) : (
-                  <>
+
+                  {currentStep.use_ai_generation ? (
                     <div>
-                      <Label className="text-xs text-zinc-500 mb-1.5 block">
-                        Subject Line
-                      </Label>
-                      <Input
-                        placeholder="Use {{first_name}}, {{company}} for personalization"
-                        value={step.subject_template}
-                        onChange={(e) =>
-                          updateStep(index, "subject_template", e.target.value)
-                        }
-                        className="bg-zinc-800 border-zinc-700 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-zinc-500 mb-1.5 block">
-                        Email Body
+                      <Label className="text-xs text-[var(--pp-text-secondary)] mb-1 block">
+                        AI Directive / Focus Angle
                       </Label>
                       <Textarea
-                        placeholder="Write your email template here. Use {{first_name}}, {{company}}, {{job_title}} for merge tags."
-                        value={step.body_template}
+                        rows={3}
+                        placeholder="Focus on their recent hiring, mention our 99% deliverability guarantee..."
+                        value={currentStep.ai_prompt_instructions}
                         onChange={(e) =>
-                          updateStep(index, "body_template", e.target.value)
+                          updateStep(selectedStepIndex, "ai_prompt_instructions", e.target.value)
                         }
-                        className="bg-zinc-800 border-zinc-700 text-sm min-h-[120px]"
+                        className="bg-[var(--pp-bg-deepest)] border-[var(--pp-border-default)] text-xs rounded-xl"
                       />
                     </div>
-                  </>
-                )}
-
-                {/* A/B Test Toggle (email steps only) */}
-                {step.step_type === "email" && (
-                  <div className="border-t border-zinc-800 pt-4 mt-2">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Switch
-                        checked={step.ab_enabled || false}
-                        onCheckedChange={(checked) =>
-                          updateStep(index, "ab_enabled", checked)
-                        }
-                      />
-                      <Label className="text-sm text-zinc-400 flex items-center gap-1.5">
-                        <GitBranch className="h-3.5 w-3.5" />
-                        A/B Test this step
-                      </Label>
-                      {step.ab_enabled && (
-                        <Badge className="text-xs bg-amber-500/20 text-amber-300">50/50 split</Badge>
-                      )}
-                    </div>
-                    {step.ab_enabled && (
-                      <div className="bg-zinc-800/30 rounded-lg p-3 space-y-3 border border-zinc-700/50">
-                        <p className="text-xs text-amber-400 font-medium">Variant B</p>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs text-[var(--pp-text-secondary)] mb-1 block">
+                          Subject Template (supports emojis 🚀 & merge tags)
+                        </Label>
                         <Input
-                          placeholder="Variant B subject line..."
-                          value={step.ab_subject_b || ""}
+                          placeholder="Quick question for {{first_name}} 🎯"
+                          value={currentStep.subject_template}
                           onChange={(e) =>
-                            updateStep(index, "ab_subject_b", e.target.value)
+                            updateStep(selectedStepIndex, "subject_template", e.target.value)
                           }
-                          className="bg-zinc-800 border-zinc-700 text-sm"
+                          className="bg-[var(--pp-bg-deepest)] border-[var(--pp-border-default)] text-xs h-9 rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-[var(--pp-text-secondary)] mb-1 block">
+                          Body Template
+                        </Label>
+                        <Textarea
+                          rows={5}
+                          placeholder="Hi {{first_name}}, saw your work at {{company_name}}..."
+                          value={currentStep.body_template}
+                          onChange={(e) =>
+                            updateStep(selectedStepIndex, "body_template", e.target.value)
+                          }
+                          className="bg-[var(--pp-bg-deepest)] border-[var(--pp-border-default)] text-xs rounded-xl font-mono text-[11px]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* A/B Testing Toggle */}
+                  <div className="pt-2 border-t border-[var(--pp-border-subtle)] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-[var(--pp-text-secondary)] flex items-center gap-1.5 cursor-pointer">
+                        <GitBranch className="w-3.5 h-3.5 text-amber-400" />
+                        Enable A/B Variant Test
+                      </Label>
+                      <Switch
+                        checked={currentStep.ab_enabled || false}
+                        onCheckedChange={(checked) =>
+                          updateStep(selectedStepIndex, "ab_enabled", checked)
+                        }
+                      />
+                    </div>
+
+                    {currentStep.ab_enabled && (
+                      <div className="p-3 rounded-xl bg-[var(--pp-bg-deepest)] border border-amber-500/20 space-y-2">
+                        <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider block">
+                          Variant B (50% Traffic)
+                        </span>
+                        <Input
+                          placeholder="Alternative subject line..."
+                          value={currentStep.ab_subject_b || ""}
+                          onChange={(e) =>
+                            updateStep(selectedStepIndex, "ab_subject_b", e.target.value)
+                          }
+                          className="bg-[var(--pp-bg-surface)] border-[var(--pp-border-default)] text-xs h-8"
                         />
                         <Textarea
-                          placeholder="Variant B email body..."
-                          value={step.ab_body_b || ""}
+                          rows={3}
+                          placeholder="Alternative body copy..."
+                          value={currentStep.ab_body_b || ""}
                           onChange={(e) =>
-                            updateStep(index, "ab_body_b", e.target.value)
+                            updateStep(selectedStepIndex, "ab_body_b", e.target.value)
                           }
-                          className="bg-zinc-800 border-zinc-700 text-sm min-h-[80px]"
+                          className="bg-[var(--pp-bg-surface)] border-[var(--pp-border-default)] text-xs rounded-lg font-mono text-[11px]"
                         />
                       </div>
                     )}
                   </div>
-                )}
-
-                {/* Condition step UI */}
-                {step.step_type === "condition" && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <ToggleRight className="h-4 w-4 text-blue-400" />
-                      <Label className="text-xs text-zinc-500">Condition Type</Label>
-                    </div>
-                    <Select
-                      value={step.condition_type || "opened"}
-                      onValueChange={(val) => updateStep(index, "condition_type", val)}
-                    >
-                      <SelectTrigger className="bg-zinc-800 border-zinc-700 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="opened">Opened previous email</SelectItem>
-                        <SelectItem value="clicked">Clicked a link</SelectItem>
-                        <SelectItem value="replied">Replied</SelectItem>
-                        <SelectItem value="not_opened">Did NOT open</SelectItem>
-                        <SelectItem value="has_tag">Has tag</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {step.condition_type === "has_tag" && (
-                      <Input
-                        placeholder="Tag name..."
-                        value={step.condition_value || ""}
-                        onChange={(e) =>
-                          updateStep(index, "condition_value", e.target.value)
-                        }
-                        className="bg-zinc-800 border-zinc-700 text-sm"
-                      />
-                    )}
-                    <p className="text-xs text-zinc-600">
-                      ✅ TRUE → continues to next step &nbsp;|&nbsp; ❌ FALSE → skips to step after next
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="py-16 text-center text-xs text-[var(--pp-text-muted)] space-y-2">
+              <Workflow className="w-8 h-8 mx-auto opacity-30 text-[var(--pp-accent1)]" />
+              <p className="font-medium text-[var(--pp-text-primary)]">No node selected</p>
+              <p>Click any node in the graph to configure its parameters and copy.</p>
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* Add Step */}
-      <div className="flex items-center justify-center pt-2">
-        {steps.length > 0 && (
-          <div className="h-6 w-px bg-zinc-700 absolute" />
-        )}
-      </div>
-      <div className="flex items-center justify-center gap-3">
-        <Button
-          variant="outline"
-          onClick={addStep}
-          className="border-dashed border-zinc-700 text-zinc-400 hover:text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" /> Add Step
-        </Button>
-        {steps.length > 0 && (
-          <Button
-            variant="outline"
-            onClick={handleAIGenerate}
-            disabled={generating}
-            className="border-dashed border-violet-700/50 text-violet-400 hover:text-violet-300"
-          >
-            <Wand2 className="h-4 w-4 mr-2" />
-            {generating ? "Generating..." : "Regenerate with AI"}
-          </Button>
-        )}
-      </div>
-
-      {/* Tips */}
-      <Card className="bg-zinc-900/30 border-zinc-800/50">
-        <CardContent className="p-4 text-xs text-zinc-500">
-          <p className="font-medium text-zinc-400 mb-2">💡 Tips</p>
-          <ul className="space-y-1 list-disc list-inside">
-            <li>
-              Enable &ldquo;AI-generated&rdquo; for personalized emails per
-              prospect — the AI uses research data to customize each email
-            </li>
-            <li>
-              Best practices: 3-5 steps, 2-3 days between emails, stop on reply
-            </li>
-            <li>
-              Steps with templates use merge tags: {`{{first_name}}`},{" "}
-              {`{{company}}`}, {`{{job_title}}`}
-            </li>
-            <li>
-              Sequences auto-pause when a prospect replies, is interested, or
-              unsubscribes
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
     </div>
   );
 }

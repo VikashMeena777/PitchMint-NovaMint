@@ -91,7 +91,7 @@ export async function GET(
     }>();
 
     for (const email of allEmails) {
-      const step = (email as any).step_number || 1;
+      const step = (email as { step_number?: number }).step_number || 1;
       if (!stepsMap.has(step)) {
         stepsMap.set(step, { sent: 0, opened: 0, clicked: 0, replied: 0, bounced: 0 });
       }

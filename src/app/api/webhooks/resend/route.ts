@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import crypto from "crypto";
 
 /**
  * Resend Webhook Handler
@@ -39,7 +40,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify HMAC signature
-    const crypto = require("crypto");
     const secretBytes = Buffer.from(webhookSecret.replace("whsec_", ""), "base64");
     const signBody = `${svixId}.${svixTimestamp}.${rawBody}`;
     const expectedSignature = crypto

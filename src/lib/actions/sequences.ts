@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/utils/activity-logger";
+import { canUserPerformAction } from "@/lib/billing/plans";
 
 export type SequenceFormData = {
   name: string;
@@ -62,6 +63,30 @@ export async function createSequence(form: SequenceFormData) {
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
+
+  // SEC-07: Plan quota enforcement for sequences
+  const { data: userProfile } = await supabase
+    .from("users")
+    .select("plan")
+    .eq("id", user.id)
+    .single();
+
+  const userPlan = userProfile?.plan || "free";
+
+  // Count active sequences for user
+  const { count: activeCount } = await supabase
+    .from("sequences")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("status", "active");
+
+  const quotaCheck = canUserPerformAction(userPlan, "create_sequence", activeCount || 0);
+  if (!quotaCheck.allowed) {
+    return {
+      error: quotaCheck.message || "Active sequence limit reached. Please upgrade your plan.",
+      allowed: false,
+    };
+  }
 
   const { data, error } = await supabase
     .from("sequences")

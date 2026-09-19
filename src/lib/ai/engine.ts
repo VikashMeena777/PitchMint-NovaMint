@@ -1,11 +1,13 @@
 import Groq from "groq-sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { cleanEmailReply } from "@/lib/utils/email-cleaner";
 
 // ============================================
-// AI PROVIDER MANAGEMENT (Groq primary → Nvidia NIM fallback)
+// AI PROVIDER MANAGEMENT (Groq primary → Google Gemini secondary → Nvidia NIM tertiary)
 // ============================================
 
 let groqClient: Groq | null = null;
+let geminiClient: GoogleGenerativeAI | null = null;
 
 function getGroqClient(): Groq | null {
   if (!process.env.GROQ_API_KEY) return null;
@@ -15,7 +17,73 @@ function getGroqClient(): Groq | null {
   return groqClient;
 }
 
-async function callNvidiaAI(
+function getGeminiClient(): GoogleGenerativeAI | null {
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+  if (!apiKey) return null;
+  if (!geminiClient) {
+    geminiClient = new GoogleGenerativeAI(apiKey);
+  }
+  return geminiClient;
+}
+
+export async function callGeminiAI(
+  prompt: string,
+  options: {
+    temperature?: number;
+    maxTokens?: number;
+    systemPrompt?: string;
+  } = {}
+): Promise<string | null> {
+  const gemini = getGeminiClient();
+  if (!gemini) return null;
+
+  const { temperature = 0.7, maxTokens = 1024, systemPrompt } = options;
+
+  try {
+    const model = gemini.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: {
+        temperature,
+        maxOutputTokens: maxTokens,
+        responseMimeType: "application/json",
+      },
+      systemInstruction: systemPrompt || undefined,
+    });
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    if (text) {
+      console.log("[AI] Google Gemini response received");
+      return text;
+    }
+  } catch (error) {
+    console.warn("[AI] Gemini failed with JSON schema, retrying in text mode:", error);
+    try {
+      const fallbackModel = gemini.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: {
+          temperature,
+          maxOutputTokens: maxTokens,
+        },
+        systemInstruction: systemPrompt || undefined,
+      });
+
+      const result = await fallbackModel.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      if (text) {
+        console.log("[AI] Google Gemini text fallback response received");
+        return text;
+      }
+    } catch (fallbackErr) {
+      console.error("[AI] Gemini fallback failed:", fallbackErr);
+    }
+  }
+  return null;
+}
+
+export async function callNvidiaAI(
   prompt: string,
   options: {
     temperature?: number;
@@ -68,9 +136,12 @@ async function callNvidiaAI(
 }
 
 /**
- * Call AI with automatic failover: Groq → Nvidia NIM
+ * Call AI with multi-provider resilience and automatic failover:
+ * Primary: Groq (Llama 3.3 70B Versatile)
+ * Secondary: Google Gemini (Gemini 1.5 Flash via @google/generative-ai)
+ * Tertiary: Nvidia NIM (Meta Llama 3.3 70B Instruct)
  */
-async function callAI(
+export async function callAI(
   prompt: string,
   options: {
     temperature?: number;
@@ -80,7 +151,7 @@ async function callAI(
 ): Promise<string | null> {
   const { temperature = 0.7, maxTokens = 1024, systemPrompt } = options;
 
-  // Try Groq first
+  // 1. Try Groq first
   const groq = getGroqClient();
   if (groq) {
     try {
@@ -104,17 +175,23 @@ async function callAI(
         return content;
       }
     } catch (error) {
-      console.warn("[AI] Groq failed, trying Nvidia NIM fallback:", error);
+      console.warn("[AI] Groq failed, attempting Google Gemini failover:", error);
     }
   }
 
-  // Fallback to Nvidia NIM
-  const content = await callNvidiaAI(prompt, options);
-  if (content) {
-    return content;
+  // 2. Secondary failover: Google Gemini 1.5 Flash
+  const geminiContent = await callGeminiAI(prompt, options);
+  if (geminiContent) {
+    return geminiContent;
   }
 
-  console.error("[AI] All providers failed — no API keys configured?");
+  // 3. Tertiary failover: Nvidia NIM
+  const nvidiaContent = await callNvidiaAI(prompt, options);
+  if (nvidiaContent) {
+    return nvidiaContent;
+  }
+
+  console.error("[AI] All AI providers failed — please check GROQ_API_KEY, GOOGLE_GEMINI_API_KEY, or NVIDIA_API_KEY");
   return null;
 }
 

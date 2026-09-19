@@ -4,47 +4,37 @@ import { useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppHeader } from "@/components/app-header";
 import { CommandPalette } from "@/components/command-palette";
-import { AnimatePresence, motion } from "framer-motion";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[var(--pp-bg-deepest)] overflow-hidden">
+    <div className="flex h-[100dvh] bg-[var(--pp-bg-deepest)] text-[var(--pp-text-primary)] overflow-x-hidden overflow-y-hidden">
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex">
+      <div className="hidden lg:flex flex-shrink-0">
         <AppSidebar />
       </div>
 
-      {/* Mobile sidebar overlay */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-              onClick={() => setMobileMenuOpen(false)}
-            />
-            <motion.div
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed left-0 top-0 z-50 lg:hidden"
-            >
-              <AppSidebar />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Mobile navigation drawer (Sheet primitive for <1024px) */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent
+          side="left"
+          className="p-0 border-r border-[var(--pp-border-subtle)] bg-[var(--pp-bg-deepest)] w-[280px] max-w-[85vw] flex flex-col z-50 overflow-hidden"
+          showCloseButton={false}
+        >
+          <SheetTitle className="sr-only">Mobile Navigation Menu</SheetTitle>
+          <AppSidebar
+            onNavigate={() => setMobileMenuOpen(false)}
+            isMobileDrawer
+          />
+        </SheetContent>
+      </Sheet>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <AppHeader onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
-        <main className="flex-1 overflow-y-auto p-6">
+      {/* Main content viewport */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        <AppHeader onMobileMenuToggle={() => setMobileMenuOpen((prev) => !prev)} />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 scroll-smooth">
           {children}
         </main>
       </div>

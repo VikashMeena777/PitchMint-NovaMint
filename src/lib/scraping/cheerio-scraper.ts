@@ -21,7 +21,7 @@ function parseHTML(html: string): {
   links: { text: string; href: string }[];
 } {
   // Remove scripts, styles
-  let cleaned = html
+  const cleaned = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<nav[\s\S]*?<\/nav>/gi, "")

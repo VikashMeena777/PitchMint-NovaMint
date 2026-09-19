@@ -16,6 +16,30 @@ export type ErrorContext = {
 
 export type ErrorSeverity = "fatal" | "error" | "warning" | "info";
 
+interface SentryScope {
+  setUser: (user: { id?: string; email?: string } | null) => void;
+  setTag: (key: string, value: string) => void;
+  setExtras: (extra: Record<string, unknown>) => void;
+  setLevel: (level: ErrorSeverity) => void;
+}
+
+interface SentryInstance {
+  withScope: (callback: (scope: SentryScope) => void) => void;
+  captureException: (error: Error) => void;
+  captureMessage: (message: string, level: ErrorSeverity) => void;
+  setUser: (user: { id: string; email?: string; name?: string } | null) => void;
+  addBreadcrumb: (breadcrumb: Record<string, unknown>) => void;
+}
+
+interface WindowWithSentry {
+  __SENTRY__?: SentryInstance;
+}
+
+function getSentry(): SentryInstance | undefined {
+  if (typeof window === "undefined") return undefined;
+  return (window as unknown as WindowWithSentry).__SENTRY__;
+}
+
 /**
  * Capture and report an error
  */
@@ -27,16 +51,16 @@ export function captureError(
   const err = typeof error === "string" ? new Error(error) : error;
 
   // Sentry integration (when configured)
-  if (typeof window !== "undefined" && (window as any).__SENTRY__) {
+  const sentry = getSentry();
+  if (sentry) {
     try {
-      const Sentry = (window as any).__SENTRY__;
-      Sentry.withScope((scope: any) => {
+      sentry.withScope((scope: SentryScope) => {
         if (context?.userId) scope.setUser({ id: context.userId, email: context.email });
         if (context?.action) scope.setTag("action", context.action);
         if (context?.component) scope.setTag("component", context.component);
         if (context?.extra) scope.setExtras(context.extra);
         scope.setLevel(severity);
-        Sentry.captureException(err);
+        sentry.captureException(err);
       });
       return;
     } catch {
@@ -75,10 +99,10 @@ export function captureMessage(
   context?: ErrorContext,
   severity: ErrorSeverity = "info"
 ): void {
-  if (typeof window !== "undefined" && (window as any).__SENTRY__) {
+  const sentry = getSentry();
+  if (sentry) {
     try {
-      const Sentry = (window as any).__SENTRY__;
-      Sentry.captureMessage(message, severity);
+      sentry.captureMessage(message, severity);
       return;
     } catch {
       // Fall through
@@ -96,9 +120,10 @@ export function setUserContext(user: {
   email?: string;
   name?: string;
 }): void {
-  if (typeof window !== "undefined" && (window as any).__SENTRY__) {
+  const sentry = getSentry();
+  if (sentry) {
     try {
-      (window as any).__SENTRY__.setUser(user);
+      sentry.setUser(user);
     } catch {
       // Ignore
     }
@@ -108,21 +133,21 @@ export function setUserContext(user: {
 /**
  * Wrap an async function with error tracking
  */
-export function withErrorTracking<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
+export function withErrorTracking<TArgs extends unknown[], TReturn>(
+  fn: (...args: TArgs) => Promise<TReturn>,
   context?: Omit<ErrorContext, "extra">
-): T {
-  return (async (...args: any[]) => {
+): (...args: TArgs) => Promise<TReturn> {
+  return async (...args: TArgs): Promise<TReturn> => {
     try {
       return await fn(...args);
     } catch (error) {
       captureError(error instanceof Error ? error : new Error(String(error)), {
         ...context,
-        extra: { args: args.length > 0 ? args : undefined },
+        extra: { args: args.length > 0 ? (args as unknown as Record<string, unknown>) : undefined },
       });
       throw error;
     }
-  }) as T;
+  };
 }
 
 /**
@@ -133,9 +158,10 @@ export function addBreadcrumb(
   message: string,
   data?: Record<string, unknown>
 ): void {
-  if (typeof window !== "undefined" && (window as any).__SENTRY__) {
+  const sentry = getSentry();
+  if (sentry) {
     try {
-      (window as any).__SENTRY__.addBreadcrumb({
+      sentry.addBreadcrumb({
         category,
         message,
         data,

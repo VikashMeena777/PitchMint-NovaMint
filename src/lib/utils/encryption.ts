@@ -26,9 +26,21 @@ export function encrypt(text: string): string {
 
 export function decrypt(encryptedText: string): string {
   const key = getEncryptionKey();
-  const [ivHex, authTagHex, encrypted] = encryptedText.split(":");
+  const parts = encryptedText.split(":");
 
-  if (!ivHex || !authTagHex || !encrypted) {
+  if (parts.length !== 3) {
+    throw new Error("Invalid encrypted text format");
+  }
+
+  const [ivHex, authTagHex, encrypted] = parts;
+
+  if (
+    !ivHex ||
+    !authTagHex ||
+    ivHex.length !== IV_LENGTH * 2 ||
+    authTagHex.length !== AUTH_TAG_LENGTH * 2 ||
+    encrypted === undefined
+  ) {
     throw new Error("Invalid encrypted text format");
   }
 
@@ -46,4 +58,50 @@ export function decrypt(encryptedText: string): string {
 
 export function generateEncryptionKey(): string {
   return crypto.randomBytes(32).toString("hex");
+}
+
+/**
+ * Transparently decrypts AES-256-GCM tokens with backward-compatible fallback.
+ * If token is already plaintext (legacy) or decryption fails, returns token as-is.
+ */
+export function safeDecrypt(token: string | null | undefined): string | null {
+  if (!token || typeof token !== "string") {
+    return null;
+  }
+
+  const parts = token.split(":");
+  if (
+    parts.length === 3 &&
+    parts[0].length === IV_LENGTH * 2 &&
+    parts[1].length === AUTH_TAG_LENGTH * 2 &&
+    /^[0-9a-fA-F]+$/.test(parts[0]) &&
+    /^[0-9a-fA-F]+$/.test(parts[1])
+  ) {
+    try {
+      return decrypt(token);
+    } catch {
+      // Fallback: return token directly if decryption fails
+      return token;
+    }
+  }
+
+  // Not in encrypted format — legacy plaintext token
+  return token;
+}
+
+/**
+ * Safely encrypts a secret with AES-256-GCM, returning the encrypted text,
+ * or the plaintext if ENCRYPTION_KEY is not configured in non-production environments.
+ */
+export function safeEncrypt(text: string | null | undefined): string | null {
+  if (text === null || text === undefined) return null;
+  try {
+    return encrypt(text);
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[Encryption] ENCRYPTION_KEY missing in non-production - using plaintext fallback", err);
+      return text;
+    }
+    throw err;
+  }
 }

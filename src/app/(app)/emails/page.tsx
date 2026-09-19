@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getEmails } from "@/lib/actions/sequences";
 import { createClient } from "@/lib/supabase/client";
@@ -53,18 +52,13 @@ const PAGE_SIZE = 20;
 export default function EmailsPage() {
   const [emails, setEmails] = useState<EmailRow[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [supabaseReady] = useState(() => !!createClient());
+  const [isLoading, setIsLoading] = useState(() => !!createClient());
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(0);
-  const [supabaseReady, setSupabaseReady] = useState(false);
-
-  useEffect(() => {
-    const client = createClient();
-    setSupabaseReady(!!client);
-  }, []);
 
   const loadEmails = useCallback(async () => {
-    if (!supabaseReady) { setIsLoading(false); return; }
+    if (!supabaseReady) return;
     setIsLoading(true);
     const result = await getEmails({
       status: statusFilter !== "all" ? statusFilter : undefined,
@@ -76,7 +70,19 @@ export default function EmailsPage() {
     setIsLoading(false);
   }, [statusFilter, page, supabaseReady]);
 
-  useEffect(() => { loadEmails(); }, [loadEmails]);
+  useEffect(() => {
+    if (!supabaseReady) return;
+    let ignore = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!ignore) {
+        await loadEmails();
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [loadEmails, supabaseReady]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 

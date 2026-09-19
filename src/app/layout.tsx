@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { CookieConsent } from "@/components/cookie-consent";
+import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -85,20 +86,22 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider>
-            {children}
-            <Toaster
-              position="bottom-right"
-              toastOptions={{
-                style: {
-                  background: "var(--pp-bg-surface)",
-                  border: "1px solid var(--pp-border-default)",
-                  color: "var(--pp-text-primary)",
-                },
-              }}
-            />
-            <CookieConsent />
-          </TooltipProvider>
+          <SmoothScrollProvider>
+            <TooltipProvider>
+              {children}
+              <Toaster
+                position="bottom-right"
+                toastOptions={{
+                  style: {
+                    background: "var(--pp-bg-surface)",
+                    border: "1px solid var(--pp-border-default)",
+                    color: "var(--pp-text-primary)",
+                  },
+                }}
+              />
+              <CookieConsent />
+            </TooltipProvider>
+          </SmoothScrollProvider>
         </ThemeProvider>
       </body>
     </html>

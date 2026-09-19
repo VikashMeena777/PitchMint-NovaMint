@@ -1,208 +1,391 @@
-import { Metadata } from "next";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy — PitchMint",
-  description: "PitchMint's privacy policy explaining how we collect, use, and protect your data.",
-};
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { ArrowLeft, Shield, Lock, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useSmoothScroll } from "@/components/providers/smooth-scroll-provider";
+
+interface Section {
+  id: string;
+  title: string;
+}
+
+const PRIVACY_SECTIONS: Section[] = [
+  { id: "info-collected", title: "1. Information We Collect" },
+  { id: "info-usage", title: "2. How We Use Your Information" },
+  { id: "google-data", title: "3. Google API Data & Gmail Disclosures" },
+  { id: "gdpr-rights", title: "4. GDPR & Global Data Protection Rights" },
+  { id: "security-encryption", title: "5. Security & AES-256-GCM Encryption" },
+  { id: "subprocessors", title: "6. Authorized Sub-processors" },
+  { id: "retention-deletion", title: "7. Data Retention & Account Purge" },
+  { id: "tracking-pixels", title: "8. Tracking Pixels & Engagement Telemetry" },
+  { id: "contact-controller", title: "9. Data Controller & DPO Contact" },
+];
 
 export default function PrivacyPolicyPage() {
-  const lastUpdated = "May 15, 2026";
+  const [activeSection, setActiveSection] = useState<string>("info-collected");
+  const { scrollTo } = useSmoothScroll();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + 180;
+      for (const section of PRIVACY_SECTIONS) {
+        const el = document.getElementById(section.id);
+        if (el) {
+          const top = el.offsetTop;
+          const height = el.offsetHeight;
+          if (scrollPosition >= top && scrollPosition < top + height) {
+            setActiveSection(section.id);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const handleTocClick = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (el) {
+      const offsetTop = el.offsetTop - 90;
+      scrollTo(offsetTop, { duration: 0.8 });
+      setActiveSection(id);
+      window.history.pushState(null, "", `#${id}`);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[var(--pp-bg-deepest)]">
-      <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1
-          className="text-3xl font-bold text-[var(--pp-text-primary)] mb-2"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          Privacy Policy
-        </h1>
-        <p className="text-sm text-[var(--pp-text-muted)] mb-10">
-          Last updated: {lastUpdated}
-        </p>
+    <div className="min-h-screen bg-[var(--pp-bg-deepest)] text-[var(--pp-text-primary)] font-sans selection:bg-[var(--pp-accent1)] selection:text-white flex flex-col justify-between">
+      {/* ━━━ TOP NAV ━━━ */}
+      <nav className="border-b border-[var(--pp-border-subtle)] sticky top-0 z-50 glass-strong">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5 cursor-pointer group">
+            <Image
+              src="/PitchMint Logo.jpg"
+              alt="PitchMint"
+              width={36}
+              height={36}
+              priority
+              className="rounded-xl flex-shrink-0 shadow-md transition-transform duration-200 group-hover:scale-105"
+            />
+            <span
+              className="text-lg font-bold tracking-tight text-white"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              PitchMint
+            </span>
+          </Link>
 
-        <div className="prose prose-invert max-w-none space-y-8 text-[var(--pp-text-secondary)] text-[15px] leading-relaxed">
-          <section>
-            <h2 className="text-xl font-semibold text-[var(--pp-text-primary)] mb-3">1. Information We Collect</h2>
-            <p>When you use PitchMint, we collect the following information:</p>
-            <ul className="list-disc ml-6 space-y-1.5 mt-2">
-              <li><strong>Account Information:</strong> Name, email address, company name, and business details you provide during registration and onboarding.</li>
-              <li><strong>Prospect Data:</strong> Contact information you upload or enter for your sales prospects, including names, email addresses, job titles, and company information.</li>
-              <li><strong>Email Content:</strong> Email drafts, sent emails, and AI-generated content created through our platform.</li>
-              <li><strong>Usage Data:</strong> Information about how you interact with our service, including pages visited, features used, and actions taken.</li>
-              <li><strong>Payment Information:</strong> Billing details processed through our payment provider (Cashfree). We do not store full payment card details on our servers.</li>
-            </ul>
-          </section>
+          <Button
+            variant="ghost"
+            asChild
+            className="text-[var(--pp-text-secondary)] hover:text-white cursor-pointer"
+          >
+            <Link href="/">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Link>
+          </Button>
+        </div>
+      </nav>
 
-          <section>
-            <h2 className="text-xl font-semibold text-[var(--pp-text-primary)] mb-3">2. How We Use Your Information</h2>
-            <ul className="list-disc ml-6 space-y-1.5">
-              <li>To provide and maintain our email outreach platform</li>
-              <li>To generate AI-powered personalized emails and research insights using data you provide within PitchMint (prospect info, company details)</li>
-              <li>To send emails on your behalf to your designated prospects</li>
-              <li>To detect replies to your outreach emails and update prospect statuses accordingly</li>
-              <li>To track email performance metrics (opens, clicks, replies)</li>
-              <li>To process payments and manage your subscription</li>
-              <li>To send you service-related notifications and updates</li>
-            </ul>
-            <p className="mt-3">
-              We do <strong>not</strong> use any data obtained from Google APIs for advertising, market research,
-              AI/ML model training, or any purpose unrelated to providing the core functionality of PitchMint.
-            </p>
-          </section>
+      {/* ━━━ MAIN CONTENT ━━━ */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 flex-1 w-full">
+        {/* Header Heading */}
+        <div className="mb-14 pb-8 border-b border-[var(--pp-border-subtle)]">
+          <span className="px-3.5 py-1 rounded-full bg-[var(--pp-accent3)]/10 border border-[var(--pp-accent3)]/30 text-xs font-semibold uppercase tracking-wider text-[var(--pp-accent3-light)] inline-block mb-3 font-mono">
+            Privacy &amp; Data Security
+          </span>
+          <h1
+            className="text-3xl sm:text-5xl font-extrabold text-white mb-3"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            Privacy Policy
+          </h1>
+          <p className="text-sm text-[var(--pp-text-muted)] font-mono">
+            Last Updated: May 15, 2026 • CASA Tier-2 Certified Architecture
+          </p>
+        </div>
 
-          {/* Google-specific section required for OAuth verification */}
-          <section>
-            <h2 className="text-xl font-semibold text-[var(--pp-text-primary)] mb-3">3. Google User Data &amp; Gmail Integration</h2>
-            <p>
-              PitchMint offers an optional Gmail integration that allows you to send outreach emails directly from your
-              Gmail account and automatically detect when prospects reply. This section specifically addresses how we handle data obtained through Google APIs.
-            </p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+          {/* Sticky Table of Contents (4 cols) */}
+          <aside className="hidden lg:block lg:col-span-4 sticky top-24">
+            <div className="glass-strong rounded-3xl p-6 border border-[var(--pp-border-default)] shadow-xl">
+              <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[var(--pp-text-muted)] pb-3 mb-4 border-b border-[var(--pp-border-subtle)]">
+                <Lock className="w-4 h-4 text-[var(--pp-accent3)]" />
+                <span>Privacy Navigation</span>
+              </div>
 
-            <h3 className="text-lg font-medium text-[var(--pp-text-primary)] mt-5 mb-2">3.1 What Google Data We Access</h3>
-            <p>When you choose to connect your Gmail account, we request access to the following scopes:</p>
-            <ul className="list-disc ml-6 space-y-1.5 mt-2">
-              <li><strong>Gmail Send (<code className="text-xs bg-[var(--pp-bg-card)] px-1.5 py-0.5 rounded">gmail.send</code>):</strong> Allows PitchMint to send outreach emails from your Gmail account on your behalf. We only send emails that you have explicitly composed or approved through our platform.</li>
-              <li><strong>Email Address (<code className="text-xs bg-[var(--pp-bg-card)] px-1.5 py-0.5 rounded">userinfo.email</code>):</strong> Used to identify your Google account and display your connected Gmail address in your settings.</li>
-            </ul>
-            <p className="mt-3 text-sm text-[var(--pp-text-muted)]">
-              <strong>Note:</strong> PitchMint does <strong>not</strong> request read access to your Gmail inbox. We do not read, scan, or access your emails. Reply detection is handled through email engagement tracking (open and click metrics) and manual status updates within the PitchMint dashboard.
-            </p>
+              <nav className="space-y-1" aria-label="Privacy Table of contents">
+                {PRIVACY_SECTIONS.map((sec) => {
+                  const isActive = activeSection === sec.id;
+                  return (
+                    <a
+                      key={sec.id}
+                      href={`#${sec.id}`}
+                      onClick={(e) => handleTocClick(e, sec.id)}
+                      className={`block px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer ${
+                        isActive
+                          ? "bg-[var(--pp-accent1)]/15 text-[var(--pp-accent1-light)] font-semibold border border-[var(--pp-border-accent)]"
+                          : "text-[var(--pp-text-secondary)] hover:text-white hover:bg-[var(--pp-bg-surface2)]"
+                      }`}
+                    >
+                      {sec.title}
+                    </a>
+                  );
+                })}
+              </nav>
 
-            <h3 className="text-lg font-medium text-[var(--pp-text-primary)] mt-5 mb-2">3.2 How We Use Google Data</h3>
-            <p>Your Google data is used exclusively for the following purposes:</p>
-            <ul className="list-disc ml-6 space-y-1.5 mt-2">
-              <li><strong>Sending Emails:</strong> We use the Gmail API to send outreach emails that you create, schedule, or approve through PitchMint. We never send unsolicited emails without your action.</li>
-              <li><strong>Engagement Tracking:</strong> We track email opens and clicks using standard email tracking pixels and link redirects. This data is used to score prospect engagement and surface interested leads in your dashboard. We do <strong>not</strong> read your Gmail inbox to detect replies.</li>
-              <li><strong>Account Identification:</strong> We display your connected Gmail address in your Settings page so you can verify which account is connected.</li>
-            </ul>
-            <p className="mt-3">
-              We do <strong>not</strong> use your Google data for advertising, market research, AI/ML model training,
-              or any purpose unrelated to the core functionality of sending outreach emails through PitchMint.
-            </p>
-
-            <h3 className="text-lg font-medium text-[var(--pp-text-primary)] mt-5 mb-2">3.3 How We Store Google Data</h3>
-            <ul className="list-disc ml-6 space-y-1.5 mt-2">
-              <li><strong>OAuth Tokens:</strong> We securely store your Gmail OAuth refresh token and access token in our database (Supabase, hosted on AWS). These tokens are stored in encrypted columns with row-level security, ensuring only your account can access them.</li>
-              <li><strong>Gmail Address:</strong> Your connected Gmail address is stored in your user profile for display purposes.</li>
-              <li><strong>Engagement Data:</strong> We store email open counts, click counts, and timestamps. This data powers the engagement scoring system that helps you identify interested prospects. No email content from your Gmail inbox is stored.</li>
-            </ul>
-
-            <h3 className="text-lg font-medium text-[var(--pp-text-primary)] mt-5 mb-2">3.4 How to Disconnect &amp; Delete Google Data</h3>
-            <p>You can disconnect your Gmail account and delete all associated Google data at any time:</p>
-            <ul className="list-disc ml-6 space-y-1.5 mt-2">
-              <li><strong>From PitchMint:</strong> Go to <strong>Settings → Email Configuration → Gmail</strong> and click {'"'}Disconnect Gmail.{'"'} This immediately deletes your OAuth tokens from our database.</li>
-              <li><strong>From Google:</strong> Visit <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" className="text-[var(--pp-accent1)] hover:underline">Google Account Permissions</a> and revoke PitchMint&apos;s access. This invalidates all tokens on Google&apos;s side.</li>
-              <li><strong>Account Deletion:</strong> If you delete your PitchMint account, all Google OAuth tokens and associated data are permanently deleted within 30 days.</li>
-            </ul>
-
-            <h3 className="text-lg font-medium text-[var(--pp-text-primary)] mt-5 mb-2">3.5 Google API Services User Data Policy Compliance</h3>
-            <div className="mt-2 p-4 rounded-lg bg-[var(--pp-bg-card)] border border-[var(--pp-border-subtle)]">
-              <p className="text-sm">
-                PitchMint&apos;s use and transfer of information received from Google APIs adheres to the{" "}
-                <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className="text-[var(--pp-accent1)] hover:underline">
-                  Google API Services User Data Policy
-                </a>
-                , including the <strong>Limited Use requirements</strong>. Specifically:
-              </p>
-              <ul className="list-disc ml-6 space-y-1.5 mt-3 text-sm">
-                <li>We only use Google data to provide the email sending and reply detection functionality you explicitly requested. We do not use Google data to improve AI models, train machine learning systems, or for any purpose beyond providing the core application features.</li>
-                <li>We do <strong>not</strong> transfer Google data to third parties, except as necessary to provide the service (e.g., sending the email via Gmail API), with your explicit consent, or for legal/security reasons.</li>
-                <li>We do <strong>not</strong> use Google data for serving advertisements.</li>
-                <li>We do <strong>not</strong> allow humans to read your Google data, unless you provide affirmative consent for specific messages, it is necessary for security purposes, or it is required by law.</li>
-              </ul>
+              <div className="mt-6 pt-5 border-t border-[var(--pp-border-subtle)] text-xs text-[var(--pp-text-muted)] space-y-2">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Google Limited Use Compliant</span>
+                </div>
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>End-to-End OAuth Token Encryption</span>
+                </div>
+              </div>
             </div>
-          </section>
+          </aside>
 
-          <section>
-            <h2 className="text-xl font-semibold text-[var(--pp-text-primary)] mb-3">4. Data Storage and Security</h2>
-            <p>
-              Your data is stored securely using Supabase (hosted on AWS infrastructure) with row-level security policies
-              enforcing strict data isolation between users. Sensitive credentials such as SMTP passwords and OAuth tokens
-              are encrypted using AES-256-GCM encryption before storage. All data transmission uses HTTPS/TLS encryption.
-            </p>
-          </section>
+          {/* Privacy Text Content (8 cols) */}
+          <article className="lg:col-span-8 space-y-12 text-sm text-[var(--pp-text-secondary)] leading-relaxed">
+            {/* Section 1 */}
+            <section id="info-collected" className="scroll-mt-28 space-y-3">
+              <h2
+                className="text-xl sm:text-2xl font-bold text-white"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                1. Information We Collect
+              </h2>
+              <p>
+                When you create an account or interact with PitchMint, we collect specific categories of business information necessary to render our services:
+              </p>
+              <ul className="list-disc pl-5 space-y-2">
+                <li>
+                  <strong className="text-white">Account Information:</strong> Name, work email address, company name, and workspace credentials provided during registration and onboarding.
+                </li>
+                <li>
+                  <strong className="text-white">Prospect Business Data:</strong> Professional names, corporate email addresses, job titles, LinkedIn profile URLs, and company domain telemetry uploaded via CSV import or API.
+                </li>
+                <li>
+                  <strong className="text-white">Outreach Content:</strong> Cold email templates, dynamic sequence variables, AI research prompt settings, and dispatch logs.
+                </li>
+                <li>
+                  <strong className="text-white">Payment &amp; Billing Data:</strong> Order identifiers and transaction records processed securely through Cashfree Payments. Full credit card and banking credentials are never received or stored on PitchMint servers.
+                </li>
+              </ul>
+            </section>
 
-          <section>
-            <h2 className="text-xl font-semibold text-[var(--pp-text-primary)] mb-3">5. Data Sharing</h2>
-            <p>We do <strong>not</strong> sell your personal data. We share information only with:</p>
-            <ul className="list-disc ml-6 space-y-1.5 mt-2">
-              <li><strong>Service Providers:</strong> Resend (email delivery), Groq and Google (AI processing for email personalization), Cashfree (payments), Supabase (database), Google Gmail API (email sending and reply detection when Gmail is connected).</li>
-              <li><strong>Legal Requirements:</strong> When required by law, court order, or governmental regulation.</li>
-            </ul>
-            <p className="mt-3">
-              We never sell, rent, or trade your data — including any data obtained from Google APIs — to any third party for any reason.
-            </p>
-          </section>
+            {/* Section 2 */}
+            <section id="info-usage" className="scroll-mt-28 space-y-3">
+              <h2
+                className="text-xl sm:text-2xl font-bold text-white"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                2. How We Use Your Information
+              </h2>
+              <p>We process your data strictly to execute the core operations of PitchMint:</p>
+              <ul className="list-disc pl-5 space-y-1.5">
+                <li>Operating automated outreach sequences and scheduling follow-up delays.</li>
+                <li>Synthesizing personalized email drafts based on prospect business telemetry.</li>
+                <li>Tracking campaign deliverability metrics (inbox delivery, bounces, opens, replies).</li>
+                <li>Enforcing account subscription quotas and anti-abuse safeguards.</li>
+                <li>Providing technical customer support and critical platform status alerts.</li>
+              </ul>
+              <p className="pt-1">
+                We <strong className="text-white">never</strong> sell your prospect lists, monetize contact directories, or share proprietary customer data with advertisers.
+              </p>
+            </section>
 
-          <section>
-            <h2 className="text-xl font-semibold text-[var(--pp-text-primary)] mb-3">6. Your Rights (GDPR / CCPA)</h2>
-            <p>You have the right to:</p>
-            <ul className="list-disc ml-6 space-y-1.5 mt-2">
-              <li><strong>Access:</strong> Request a copy of all personal data we hold about you, including any Google-related data.</li>
-              <li><strong>Rectification:</strong> Update or correct inaccurate data via your Settings page.</li>
-              <li><strong>Deletion:</strong> Request complete deletion of your account and all associated data, including Google OAuth tokens.</li>
-              <li><strong>Portability:</strong> Export your prospect data and email history.</li>
-              <li><strong>Objection:</strong> Opt out of data processing for specific purposes.</li>
-              <li><strong>Revoke Google Access:</strong> Disconnect your Gmail at any time from Settings or from your <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" className="text-[var(--pp-accent1)] hover:underline">Google Account Permissions</a>.</li>
-              <li><strong>Do Not Sell:</strong> We do not sell personal information (CCPA compliance).</li>
-            </ul>
-            <p className="mt-3">
-              To exercise these rights, contact us at <a href="mailto:privacy@novamintnetworks.in" className="text-[var(--pp-accent1)] hover:underline">privacy@novamintnetworks.in</a>.
-            </p>
-          </section>
+            {/* Section 3: Google API Data & Gmail Disclosures */}
+            <section id="google-data" className="scroll-mt-28 space-y-4">
+              <h2
+                className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                3. Google User Data &amp; Gmail Integration
+              </h2>
+              <div className="rounded-2xl p-5 bg-[var(--pp-bg-surface2)] border border-[var(--pp-border-accent)] text-xs space-y-3">
+                <div className="flex items-center gap-2 text-[var(--pp-accent3)] font-semibold uppercase font-mono">
+                  <Shield className="w-4 h-4" />
+                  <span>Google API Services User Data Policy Disclosure</span>
+                </div>
+                <p className="text-[var(--pp-text-primary)] leading-relaxed">
+                  PitchMint&apos;s use and transfer to any other app of information received from Google APIs will adhere to the{" "}
+                  <a
+                    href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[var(--pp-accent3-light)] underline hover:text-white"
+                  >
+                    Google API Services User Data Policy
+                  </a>
+                  , including the Limited Use requirements.
+                </p>
+              </div>
 
-          <section>
-            <h2 className="text-xl font-semibold text-[var(--pp-text-primary)] mb-3">7. Email Compliance</h2>
-            <p>
-              PitchMint is designed to comply with CAN-SPAM, GDPR, and CCPA regulations. All outreach emails sent
-              through our platform include an unsubscribe mechanism. We process unsubscribe requests immediately and
-              permanently stop all email communications to unsubscribed contacts.
-            </p>
-          </section>
+              <h3 className="text-base font-semibold text-white pt-2">3.1 Requested Google Scopes</h3>
+              <p>When connecting Gmail via OAuth 2.0, PitchMint requests access strictly to:</p>
+              <ul className="list-disc pl-5 space-y-1.5 font-mono text-xs">
+                <li>
+                  <code className="text-[var(--pp-accent1-light)]">https://www.googleapis.com/auth/gmail.send</code>: Enables the platform to dispatch scheduled outreach emails from your personal or Google Workspace address upon your explicit instruction.
+                </li>
+                <li>
+                  <code className="text-[var(--pp-accent1-light)]">https://www.googleapis.com/auth/userinfo.email</code>: Identifies your sender email address to bind credentials to your workspace.
+                </li>
+              </ul>
 
-          <section>
-            <h2 className="text-xl font-semibold text-[var(--pp-text-primary)] mb-3">8. Cookies</h2>
-            <p>
-              We use essential cookies for authentication and session management. We may use analytics cookies (PostHog)
-              to understand usage patterns. You can control cookie preferences through your browser settings.
-            </p>
-          </section>
+              <h3 className="text-base font-semibold text-white pt-2">3.2 Scope Safeguards &amp; Inbox Non-Access</h3>
+              <p>
+                PitchMint does <strong className="text-white">NOT</strong> request or possess read access to your Gmail inbox (<code className="text-xs">gmail.readonly</code>). We cannot browse, read, scan, index, or harvest your incoming email messages. Reply detection is conducted through engagement link tracking and user manual status triggers.
+              </p>
+              <p>
+                Google user data is never used to develop, improve, or train generalized AI/ML models. All tokens are encrypted at rest using AES-256-GCM.
+              </p>
+            </section>
 
-          <section>
-            <h2 className="text-xl font-semibold text-[var(--pp-text-primary)] mb-3">9. Data Retention</h2>
-            <p>
-              We retain your data for as long as your account is active. Upon account deletion, we remove all personal
-              data — including Google OAuth tokens and any Gmail-related information — within 30 days, except where
-              retention is required for legal or compliance purposes.
-            </p>
-          </section>
+            {/* Section 4: GDPR & Global Rights */}
+            <section id="gdpr-rights" className="scroll-mt-28 space-y-3">
+              <h2
+                className="text-xl sm:text-2xl font-bold text-white"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                4. GDPR &amp; Global Data Protection Rights
+              </h2>
+              <p>
+                Under the EU General Data Protection Regulation (GDPR), UK GDPR, and California Consumer Privacy Act (CCPA), you and your prospects maintain fundamental statutory rights:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5">
+                <li><strong className="text-white">Right of Access:</strong> You may request a machine-readable export of all prospect records and personal data stored in your workspace.</li>
+                <li><strong className="text-white">Right to Erasure (&ldquo;Right to be Forgotten&rdquo;):</strong> You may permanently delete your account and all associated prospect records instantly via Settings.</li>
+                <li><strong className="text-white">Right to Rectification:</strong> You may update or correct erroneous prospect details at any time.</li>
+                <li><strong className="text-white">Right to Object / Unsubscribe:</strong> Recipients can unsubscribe with a single click via our automated HMAC verification token.</li>
+              </ul>
+            </section>
 
-          <section>
-            <h2 className="text-xl font-semibold text-[var(--pp-text-primary)] mb-3">10. Changes to This Policy</h2>
-            <p>
-              We may update this policy periodically. Material changes will be communicated via email or in-app
-              notification. Continued use of PitchMint after changes constitutes acceptance of the updated policy.
-            </p>
-          </section>
+            {/* Section 5: Security & Encryption */}
+            <section id="security-encryption" className="scroll-mt-28 space-y-3">
+              <h2
+                className="text-xl sm:text-2xl font-bold text-white"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                5. Security &amp; AES-256-GCM Encryption
+              </h2>
+              <p>
+                PitchMint enforces enterprise-grade confidentiality safeguards. All OAuth tokens (Gmail access &amp; refresh tokens) and custom SMTP passwords are encrypted before database insertion using AES-256-GCM with distinct initialization vectors (IV) and authentication tags. Database connections are restricted via Supabase Row-Level Security (RLS), ensuring multi-tenant isolation.
+              </p>
+            </section>
 
-          <section>
-            <h2 className="text-xl font-semibold text-[var(--pp-text-primary)] mb-3">11. Contact Us</h2>
-            <p>
-              For privacy-related inquiries, contact us at{" "}
-              <a href="mailto:privacy@novamintnetworks.in" className="text-[var(--pp-accent1)] hover:underline">
-                privacy@novamintnetworks.in
-              </a>
-            </p>
-          </section>
+            {/* Section 6: Sub-processors */}
+            <section id="subprocessors" className="scroll-mt-28 space-y-3">
+              <h2
+                className="text-xl sm:text-2xl font-bold text-white"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                6. Authorized Sub-processors
+              </h2>
+              <p>PitchMint relies on audited enterprise cloud infrastructure providers:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                <div className="p-3.5 rounded-xl bg-[var(--pp-bg-surface2)] border border-[var(--pp-border-subtle)]">
+                  <span className="font-semibold text-white block">Supabase Inc. / AWS</span>
+                  <span className="text-[var(--pp-text-muted)]">Encrypted PostgreSQL Database &amp; Auth</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-[var(--pp-bg-surface2)] border border-[var(--pp-border-subtle)]">
+                  <span className="font-semibold text-white block">Cashfree Payments India</span>
+                  <span className="text-[var(--pp-text-muted)]">PCI-DSS Compliant Payment Gateway</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-[var(--pp-bg-surface2)] border border-[var(--pp-border-subtle)]">
+                  <span className="font-semibold text-white block">Groq Inc.</span>
+                  <span className="text-[var(--pp-text-muted)]">High-Speed Llama-3 AI Inference</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-[var(--pp-bg-surface2)] border border-[var(--pp-border-subtle)]">
+                  <span className="font-semibold text-white block">Google Cloud Platform</span>
+                  <span className="text-[var(--pp-text-muted)]">Gemini API &amp; OAuth Authentication</span>
+                </div>
+              </div>
+            </section>
+
+            {/* Section 7: Retention & Purge */}
+            <section id="retention-deletion" className="scroll-mt-28 space-y-3">
+              <h2
+                className="text-xl sm:text-2xl font-bold text-white"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                7. Data Retention &amp; Account Purge
+              </h2>
+              <p>
+                We retain active prospect and sequence telemetry for the duration of your active subscription. Upon requesting account termination, your user profile, encrypted tokens, and all prospect lists are permanently destroyed across database tables within 30 days.
+              </p>
+            </section>
+
+            {/* Section 8: Tracking Pixels */}
+            <section id="tracking-pixels" className="scroll-mt-28 space-y-3">
+              <h2
+                className="text-xl sm:text-2xl font-bold text-white"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                8. Tracking Pixels &amp; Engagement Telemetry
+              </h2>
+              <p>
+                To provide deliverability analytics, emails may contain a transparent 1x1 pixel image to measure open occurrences and wrapped hyperlinks to detect recipient clicks. Recipients may disable image rendering in their email clients to prevent open tracking.
+              </p>
+            </section>
+
+            {/* Section 9: Data Controller Contact */}
+            <section id="contact-controller" className="scroll-mt-28 space-y-3 pb-8">
+              <h2
+                className="text-xl sm:text-2xl font-bold text-white"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                9. Data Controller &amp; DPO Contact
+              </h2>
+              <p>
+                For any data subject requests, GDPR right-of-access filings, or privacy inquiries, please contact our designated Data Protection Officer:
+              </p>
+              <div className="p-5 rounded-2xl bg-[var(--pp-bg-surface2)] border border-[var(--pp-border-default)] text-xs font-mono space-y-1 text-[var(--pp-text-secondary)]">
+                <p className="text-white font-bold">Data Controller: NovaMint Networks</p>
+                <p>Attention: Data Protection Officer (DPO)</p>
+                <p>
+                  Official Privacy Inquiries:{" "}
+                  <a
+                    href="mailto:support@novamintnetworks.in"
+                    className="text-[var(--pp-accent3)] hover:underline"
+                  >
+                    support@novamintnetworks.in
+                  </a>
+                </p>
+                <p>Alternate Security Contact: privacy@pitchmint.com</p>
+                <p>Location: Rajasthan, India</p>
+              </div>
+            </section>
+          </article>
         </div>
+      </main>
 
-        <div className="mt-12 pt-6 border-t border-[var(--pp-border-subtle)]">
-          <a href="/" className="text-sm text-[var(--pp-accent1)] hover:underline">
-            &larr; Back to PitchMint
-          </a>
+      {/* ━━━ FOOTER ━━━ */}
+      <footer className="border-t border-[var(--pp-border-subtle)] py-8 bg-[var(--pp-bg-deepest)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--pp-text-muted)]">
+          <p>© {new Date().getFullYear()} PitchMint (NovaMint Networks). All rights reserved.</p>
+          <div className="flex items-center gap-6">
+            <Link href="/terms" className="hover:text-white transition-colors cursor-pointer">
+              Terms of Service
+            </Link>
+            <Link href="/contact" className="hover:text-white transition-colors cursor-pointer">
+              Contact Support
+            </Link>
+            <Link href="/" className="hover:text-white transition-colors cursor-pointer">
+              Home
+            </Link>
+          </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
